@@ -1,6 +1,6 @@
 <template>
   <div :class="$style.main">
-    <h1>SIP Calculator</h1>
+    <h1 style="text-align: center">SIP Calculator</h1>
     <div :class="$style.container">
       <SipCalculator @update="onValuesUpdated($event)" :class="$style['sip-calculator']" />
       <div :class="$style.chartContainer">
@@ -238,14 +238,6 @@ const onValuesUpdated = (updatedData: any) => {
   position: relative;
 }
 
-/* @media (min-width: 1200px) {
-  .sip-calculator,
-  .chartContainer,
-  .LineChartContainer {
-    flex: 1 1 30%;
-  }
-} */
-
 @media (min-width: 600px) {
   .sip-calculator,
   .chartContainer {
@@ -262,6 +254,11 @@ const onValuesUpdated = (updatedData: any) => {
   .LineChartContainer {
     flex: 1 1 100%;
   }
+  .container {
+    width: 100%;
+    padding-top: 0%;
+  }
+
   .main {
     align-items: normal;
   }
