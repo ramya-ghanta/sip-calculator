@@ -1,12 +1,11 @@
 <template>
   <div :class="$style.main">
-    <h1 style="text-align: center">SIP Calculator</h1>
     <div :class="$style.container">
       <SipCalculator @update="onValuesUpdated($event)" :class="$style['sip-calculator']" />
-      <div :class="$style.chartContainer">
+      <div v-if="!showNoDataMessage" :class="$style.chartContainer">
         <Pie :data="data" :options="chartOptions" />
       </div>
-      <div :class="$style.LineChartContainer">
+      <div v-if="!showNoDataMessage" :class="$style.LineChartContainer">
         <Bar :data="lineData" :options="barChartOptions" />
       </div>
     </div>
@@ -72,13 +71,15 @@ const barChartOptions = {
     },
     tooltip: {
       callbacks: {
-        label: function (context: any) {
-          const customValues = [
+        label: function () {
+          return '';
+        },
+        afterLabel: function (context: any) {
+          return [
             `Principal: ${formatNumber(investedAmount.value)}`,
             `Interest Rate: ${interestRate.value}%`,
-            ` Returns: ${formatNumber(context.raw)}`
+            `Returns: ${formatNumber(context.raw)}`
           ];
-          return customValues.join(',');
         },
         title: function () {
           return '';
@@ -101,7 +102,7 @@ const barChartOptions = {
       display: true,
       title: {
         display: true,
-        text: 'Est. returns (Cr)'
+        text: 'Future Value (Cr)'
       },
       ticks: {
         callback: function (value: any) {
@@ -189,6 +190,8 @@ const calculateLineData = (
   };
 };
 
+const showNoDataMessage = ref(false);
+
 const onValuesUpdated = (updatedData: any) => {
   const {
     totalInvestment,
@@ -199,8 +202,27 @@ const onValuesUpdated = (updatedData: any) => {
     investmentType,
     years
   } = updatedData;
+
+  const fieldsToCheck = [
+    totalInvestment,
+    estimatedReturns,
+    totalReturn,
+    expectedReturn,
+    investment,
+    years
+  ];
+
+  showNoDataMessage.value = false;
+
+  fieldsToCheck.forEach((value) => {
+    if (isNaN(value) || value === '' || value === 0) {
+      showNoDataMessage.value = true;
+    }
+  });
+
   investedAmount.value = totalInvestment;
   interestRate.value = expectedReturn;
+
   data.value = calculateChartData(totalInvestment, estimatedReturns, totalReturn);
   lineData.value = calculateLineData(investment, expectedReturn, investmentType, years);
 };
@@ -234,7 +256,7 @@ const onValuesUpdated = (updatedData: any) => {
 
 .LineChartContainer {
   min-width: 0;
-  height: 300px;
+  height: 400px;
   position: relative;
 }
 

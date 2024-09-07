@@ -1,6 +1,6 @@
 <template>
   <div>
-    <p style="font-weight: 500">Calculate the future value of your SIP/Lumpsum investment</p>
+    <h1 style="text-align: center">SIP Calculator</h1>
     <div>
       <div :class="$style.toggleContainer">
         <div
@@ -20,20 +20,20 @@
     <div>
       <div :class="$style.options">
         <div :class="$style.category">
-          <span> {{ investmentTitle }} (₹) </span>
+          <span> {{ investmentTitle }} </span>
           <div style="display: flex; justify-content: flex-end">
-            <span
-              title="Value must be between 500 and 1,000,000"
-              v-if="investment < 500"
-              style="color: red"
-              ><i class="fas fa-exclamation-circle"></i
-            ></span>
+            <span v-if="showError" :class="$style.tooltip">
+              <i class="fas fa-exclamation-circle"></i>
+              <span :class="$style['tooltip-text']" style="left: -1425%"
+                >Value must be between 100 and 1,000,000</span
+              >
+            </span>
             <div :class="$style['input-field']">
               <div>
                 <div
                   v-if="showInvestmentText && !showError"
                   @click="showInvestmentText = false"
-                  style="font-size: small"
+                  style="width: 64px; display: flex; justify-content: flex-end"
                 >
                   {{ formatPrice(investment) }}
                 </div>
@@ -50,7 +50,8 @@
         </div>
         <Slider
           v-model="investment"
-          :max="500000"
+          :max="1000000"
+          :step="investmentInterval"
           :tooltips="false"
           :lazy="false"
           @update="onValueChange()"
@@ -59,13 +60,20 @@
       <div :class="$style.options">
         <div :class="$style.category">
           <span> Expected Return (%) </span>
-          <span :class="$style['input-field']">
-            <input type="number" v-model="expectedReturn" :class="$style['text-box']" />
-          </span>
+          <div style="display: flex; justify-content: flex-end">
+            <span v-if="expectedReturn < 1" :class="$style.tooltip">
+              <i class="fas fa-exclamation-circle"></i>
+              <span :class="$style['tooltip-text']" style="left: -700%"
+                >Value must greater than 1</span
+              >
+            </span>
+            <div :class="$style['input-field']">
+              <input type="number" v-model="expectedReturn" min="1" :class="$style['text-box']" />
+            </div>
+          </div>
         </div>
         <Slider
           v-model="expectedReturn"
-          :min="1"
           :max="30"
           :step="0.1"
           :tooltips="false"
@@ -76,14 +84,21 @@
       <div :class="$style.options">
         <div :class="$style.category">
           <span> Time Period (Yr) </span>
-          <span :class="$style['input-field']">
-            <input type="number" v-model="timePeriod" :class="$style['text-box']" />
-          </span>
+          <div style="display: flex; justify-content: flex-end">
+            <span v-if="timePeriod < 1" :class="$style.tooltip">
+              <i class="fas fa-exclamation-circle"></i>
+              <span :class="$style['tooltip-text']" style="left: -700%"
+                >Value must greater than 1</span
+              >
+            </span>
+            <div :class="$style['input-field']">
+              <input type="number" v-model="timePeriod" min="1" :class="$style['text-box']" />
+            </div>
+          </div>
         </div>
 
         <Slider
           v-model="timePeriod"
-          :min="1"
           :max="60"
           :step="1"
           :tooltips="false"
@@ -121,14 +136,13 @@ const timePeriod = ref(0);
 const totalInvestment = ref(0);
 const estimatedReturns = ref(0);
 const totalReturn = ref(0);
-const investmentString = ref('0');
 const showInvestmentText = ref(true);
 const investmentType = ref('SIP');
-const showError = computed(() => investment.value < 500);
+const showError = computed(() => investment.value < 100);
+const investmentInterval = ref(1);
 
 onMounted(() => {
   investment.value = 25000;
-  investmentString.value = '25000';
   expectedReturn.value = 12;
   timePeriod.value = 10;
   onValueChange();
@@ -143,15 +157,20 @@ const onInvestmentTypeChange = (type: string) => {
   onValueChange();
 };
 
-const formatPrice = (price: number) =>
-  new Intl.NumberFormat('en-IN', {
+const formatPrice = (price: number) => {
+  if (isNaN(price)) {
+    price = 0;
+  }
+
+  return new Intl.NumberFormat('en-IN', {
     style: 'currency',
     currency: 'INR',
     maximumFractionDigits: 0
   }).format(price);
+};
 
 const onValueChange = () => {
-  investmentString.value = formatPrice(investment.value);
+  investmentInterval.value = investment.value < 500 ? 1 : investment.value < 100000 ? 500 : 5000;
 
   const {
     totalInvestment: totalInvestedAmount,
@@ -230,6 +249,7 @@ const onValueChange = () => {
   outline: 0px;
   background-color: #fbfbfa;
   width: 60px;
+  font-size: medium;
 }
 
 .input-field {
@@ -244,5 +264,30 @@ input::-webkit-inner-spin-button {
 
 input[type='number'] {
   -moz-appearance: textfield;
+}
+
+.tooltip {
+  position: relative;
+  cursor: pointer;
+  color: red;
+}
+
+.tooltip-text {
+  content: attr(title);
+  visibility: hidden;
+  background-color: black;
+  color: #fff;
+  text-align: center;
+  border-radius: 5px;
+  padding: 5px;
+  position: absolute;
+  z-index: 1;
+  top: 50%;
+  transform: translateY(-50%);
+  white-space: nowrap;
+}
+
+.tooltip:hover .tooltip-text {
+  visibility: visible;
 }
 </style>
