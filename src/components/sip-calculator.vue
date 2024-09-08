@@ -15,6 +15,12 @@
         >
           Lumpsum
         </div>
+        <div
+          :class="[$style.option, investmentType === 'step' ? $style.selected : '']"
+          @click="onInvestmentTypeChange('step')"
+        >
+          Step Up SIP
+        </div>
       </div>
     </div>
     <div>
@@ -52,6 +58,30 @@
           v-model="investment"
           :max="1000000"
           :step="investmentInterval"
+          :tooltips="false"
+          :lazy="false"
+          @update="onValueChange()"
+        />
+      </div>
+      <div v-if="investmentType == 'step'" :class="$style.options">
+        <div :class="$style.category">
+          <span> Annual step up (%) </span>
+          <div style="display: flex; justify-content: flex-end">
+            <span v-if="stepup < 1" :class="$style.tooltip">
+              <i class="fas fa-exclamation-circle"></i>
+              <span :class="$style['tooltip-text']" style="left: -700%"
+                >Value must greater than 1</span
+              >
+            </span>
+            <div :class="$style['input-field']">
+              <input type="number" v-model="stepup" min="1" :class="$style['text-box']" />
+            </div>
+          </div>
+        </div>
+        <Slider
+          v-model="stepup"
+          :max="50"
+          :step="1"
           :tooltips="false"
           :lazy="false"
           @update="onValueChange()"
@@ -124,8 +154,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
-import { calculateSIP, calculateLump } from './sip-calculator';
+import { computed, isVNode, onMounted, ref } from 'vue';
+import { calculateSIP, calculateLump, calculateStepUpSIP } from './sip-calculator';
 import Slider from '@vueform/slider';
 
 const emits = defineEmits(['update']);
@@ -135,6 +165,7 @@ const expectedReturn = ref(0);
 const timePeriod = ref(0);
 const totalInvestment = ref(0);
 const estimatedReturns = ref(0);
+const stepup = ref(0);
 const totalReturn = ref(0);
 const showInvestmentText = ref(true);
 const investmentType = ref('SIP');
@@ -145,6 +176,7 @@ onMounted(() => {
   investment.value = 25000;
   expectedReturn.value = 12;
   timePeriod.value = 10;
+  stepup.value = 10;
   onValueChange();
 });
 
@@ -178,7 +210,9 @@ const onValueChange = () => {
     totalReturn: finalReturns
   } = investmentType.value === 'SIP'
     ? calculateSIP(timePeriod.value, investment.value, expectedReturn.value)
-    : calculateLump(timePeriod.value, investment.value, expectedReturn.value);
+    : investmentType.value === 'step'
+      ? calculateStepUpSIP(timePeriod.value, investment.value, stepup.value, expectedReturn.value)
+      : calculateLump(timePeriod.value, investment.value, expectedReturn.value);
 
   totalInvestment.value = totalInvestedAmount;
   estimatedReturns.value = finalEstimatedReturns;
@@ -234,7 +268,7 @@ const onValueChange = () => {
   padding: 5px 20px;
   border-radius: 20px;
   cursor: pointer;
-  background-color: #f9f9f9;
+  background-color: #fbfbfa;
   text-align: center;
 }
 

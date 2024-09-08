@@ -102,7 +102,7 @@ const barChartOptions = {
       display: true,
       title: {
         display: true,
-        text: 'Future Value (Cr)'
+        text: 'Future Value'
       },
       ticks: {
         callback: function (value: any) {
