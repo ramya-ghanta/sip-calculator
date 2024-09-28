@@ -1,11 +1,21 @@
 <template>
   <div :class="$style.main">
+    <CardSelection @cardChange="önClickOfCard($event)" />
     <div :class="$style.container">
-      <SipCalculator @update="onValuesUpdated($event)" :class="$style['sip-calculator']" />
-      <div v-if="!showNoDataMessage" :class="$style.chartContainer">
+      <FireCalculator
+        v-if="calclatorType == 'fire'"
+        @update="onValuesUpdated($event)"
+        :class="$style['sip-calculator']"
+      />
+      <InflationCalculator
+        v-else-if="calclatorType == 'inflation'"
+        :class="$style['sip-calculator']"
+      />
+      <SipCalculator v-else @update="onValuesUpdated($event)" :class="$style['sip-calculator']" />
+      <div v-if="!showNoDataMessage && calclatorType != 'fire'" :class="$style.chartContainer">
         <Pie :data="data" :options="chartOptions" />
       </div>
-      <div v-if="!showNoDataMessage" :class="$style.LineChartContainer">
+      <div v-if="!showNoDataMessage && calclatorType == 'sip'" :class="$style.LineChartContainer">
         <Bar :data="lineData" :options="barChartOptions" />
       </div>
     </div>
@@ -14,6 +24,9 @@
 
 <script setup lang="ts">
 import SipCalculator from './components/sip-calculator.vue';
+import FireCalculator from './components/fire-calculator.vue';
+import InflationCalculator from './components/inflation-calculator.vue';
+import CardSelection from './components/card-selection.vue';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -143,8 +156,8 @@ const calculateChartData = (
 ) => {
   const investmentAmount = (totalInvestment / totalReturn) * 100;
   const returns = (estimatedReturns / totalReturn) * 100;
+
   return {
-    labels: ['Invested', 'Ést. returns'],
     datasets: [
       {
         backgroundColor: ['#f4c430 ', '#36A2EB'],
@@ -223,8 +236,22 @@ const onValuesUpdated = (updatedData: any) => {
   investedAmount.value = totalInvestment;
   interestRate.value = expectedReturn;
 
-  data.value = calculateChartData(totalInvestment, estimatedReturns, totalReturn);
+  data.value = {
+    ...data.value,
+    ...calculateChartData(totalInvestment, estimatedReturns, totalReturn)
+  };
   lineData.value = calculateLineData(investment, expectedReturn, investmentType, years);
+};
+
+const calclatorType = ref('sip');
+
+const önClickOfCard = (type: string) => {
+  calclatorType.value = type;
+  data.value = {
+    ...data.value,
+    labels:
+      type === 'inflation' ? ['Current Cost', 'Total Inflation'] : ['Invested', 'Ést. returns']
+  };
 };
 </script>
 
@@ -232,8 +259,8 @@ const onValuesUpdated = (updatedData: any) => {
 .main {
   display: flex;
   justify-content: center;
-  flex-direction: column;
   align-items: center;
+  gap: 5rem;
 }
 
 .container {
@@ -280,9 +307,17 @@ const onValuesUpdated = (updatedData: any) => {
     width: 100%;
     padding-top: 0%;
   }
+}
 
+@media (max-width: 1200px) {
   .main {
     align-items: normal;
+    flex-direction: column;
+    gap: 1rem;
+  }
+  .container {
+    width: 100%;
+    padding-top: 0%;
   }
 }
 

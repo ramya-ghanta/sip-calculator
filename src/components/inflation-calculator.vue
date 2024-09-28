@@ -1,32 +1,10 @@
 <template>
   <div>
-    <h1 style="text-align: center">SIP Calculator</h1>
-    <div>
-      <div :class="$style.toggleContainer">
-        <div
-          :class="[$style.option, investmentType === 'SIP' ? $style.selected : '']"
-          @click="onInvestmentTypeChange('SIP')"
-        >
-          SIP
-        </div>
-        <div
-          :class="[$style.option, investmentType === 'Lumpsum' ? $style.selected : '']"
-          @click="onInvestmentTypeChange('Lumpsum')"
-        >
-          Lumpsum
-        </div>
-        <div
-          :class="[$style.option, investmentType === 'step' ? $style.selected : '']"
-          @click="onInvestmentTypeChange('step')"
-        >
-          Step Up SIP
-        </div>
-      </div>
-    </div>
+    <h1 style="text-align: center">Inflation Calculator</h1>
     <div>
       <div :class="$style.options">
         <div :class="$style.category">
-          <span> {{ investmentTitle }} </span>
+          <span> Current Cost </span>
           <div style="display: flex; justify-content: flex-end">
             <span v-if="showError" :class="$style.tooltip">
               <i class="fas fa-exclamation-circle"></i>
@@ -39,7 +17,7 @@
                 <div
                   v-if="showInvestmentText && !showError"
                   @click="showInvestmentText = false"
-                  style="width: 64px; display: flex; justify-content: flex-end"
+                  style="width: 76px; display: flex; justify-content: flex-end"
                 >
                   {{ formatPrice(investment) }}
                 </div>
@@ -56,32 +34,8 @@
         </div>
         <Slider
           v-model="investment"
-          :max="1000000"
-          :step="investmentInterval"
-          :tooltips="false"
-          :lazy="false"
-          @update="onValueChange()"
-        />
-      </div>
-      <div v-if="investmentType == 'step'" :class="$style.options">
-        <div :class="$style.category">
-          <span> Annual step up (%) </span>
-          <div style="display: flex; justify-content: flex-end">
-            <span v-if="stepup < 1" :class="$style.tooltip">
-              <i class="fas fa-exclamation-circle"></i>
-              <span :class="$style['tooltip-text']" style="left: -700%"
-                >Value must greater than 1</span
-              >
-            </span>
-            <div :class="$style['input-field']">
-              <input type="number" v-model="stepup" min="1" :class="$style['text-box']" />
-            </div>
-          </div>
-        </div>
-        <Slider
-          v-model="stepup"
-          :max="50"
-          :step="1"
+          :max="10000000"
+          :step="5000"
           :tooltips="false"
           :lazy="false"
           @update="onValueChange()"
@@ -89,7 +43,7 @@
       </div>
       <div :class="$style.options">
         <div :class="$style.category">
-          <span> Expected Return (%) </span>
+          <span> Rate of Inflation (%) </span>
           <div style="display: flex; justify-content: flex-end">
             <span v-if="expectedReturn < 1" :class="$style.tooltip">
               <i class="fas fa-exclamation-circle"></i>
@@ -137,26 +91,25 @@
         />
       </div>
     </div>
-
     <div :class="$style.output">
       <div :class="$style.category">
-        Invested Amount
+        Current Cost
         <span>{{ formatPrice(totalInvestment) }}</span>
       </div>
       <div :class="$style.category">
-        Est. returns<span>{{ formatPrice(estimatedReturns) }}</span>
+        Cost Increase<span>{{ formatPrice(estimatedReturns) }}</span>
       </div>
       <div :class="$style.category">
-        Future Value<span>{{ formatPrice(totalReturn) }}</span>
+        Future Cost <span>{{ formatPrice(totalReturn) }}</span>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
-import { calculateSIP, calculateLump, calculateStepUpSIP } from './sip-calculator';
+import { computed, onMounted, ref } from 'vue';
 import Slider from '@vueform/slider';
+import { calculateInfation } from './inflation0calcultor';
 
 const emits = defineEmits(['update']);
 
@@ -165,29 +118,17 @@ const expectedReturn = ref(0);
 const timePeriod = ref(0);
 const totalInvestment = ref(0);
 const estimatedReturns = ref(0);
-const stepup = ref(0);
 const totalReturn = ref(0);
 const showInvestmentText = ref(true);
-const investmentType = ref('SIP');
+const investmentType = 'inflamation';
 const showError = computed(() => investment.value < 100);
-const investmentInterval = ref(1);
 
 onMounted(() => {
-  investment.value = 25000;
-  expectedReturn.value = 12;
-  timePeriod.value = 10;
-  stepup.value = 10;
+  investment.value = 100000;
+  expectedReturn.value = 6;
+  timePeriod.value = 5;
   onValueChange();
 });
-
-const investmentTitle = computed(() =>
-  investmentType.value === 'SIP' ? 'Monthly Investment' : 'Total Investment'
-);
-
-const onInvestmentTypeChange = (type: string) => {
-  investmentType.value = type;
-  onValueChange();
-};
 
 const formatPrice = (price: number) => {
   if (isNaN(price)) {
@@ -202,21 +143,11 @@ const formatPrice = (price: number) => {
 };
 
 const onValueChange = () => {
-  if (investment.value > 100000) {
-    investment.value = Math.round(investment.value / 5000) * 5000;
-  }
-
-  investmentInterval.value = investment.value < 500 ? 1 : investment.value < 100000 ? 500 : 5000;
-
   const {
     totalInvestment: totalInvestedAmount,
     estimatedReturns: finalEstimatedReturns,
     totalReturn: finalReturns
-  } = investmentType.value === 'SIP'
-    ? calculateSIP(timePeriod.value, investment.value, expectedReturn.value)
-    : investmentType.value === 'step'
-      ? calculateStepUpSIP(timePeriod.value, investment.value, stepup.value, expectedReturn.value)
-      : calculateLump(timePeriod.value, investment.value, expectedReturn.value);
+  } = calculateInfation(timePeriod.value, investment.value, expectedReturn.value);
 
   totalInvestment.value = totalInvestedAmount;
   estimatedReturns.value = finalEstimatedReturns;
@@ -228,32 +159,10 @@ const onValueChange = () => {
     totalReturn: totalReturn.value,
     expectedReturn: expectedReturn.value,
     investment: investment.value,
-    investmentType: investmentType.value,
+    investmentType: investmentType,
     years: timePeriod.value
   });
 };
-
-let sipInvestment = 25000;
-let LumpsumInvestment = 25000;
-let stepInvestment = 25000;
-
-watch(investmentType, (newValue, oldValue) => {
-  if (oldValue === 'SIP') {
-    sipInvestment = investment.value;
-  } else if (oldValue === 'Lumpsum') {
-    LumpsumInvestment = investment.value;
-  } else {
-    stepInvestment = investment.value;
-  }
-
-  if (newValue === 'SIP') {
-    investment.value = sipInvestment;
-  } else if (newValue === 'Lumpsum') {
-    investment.value = LumpsumInvestment;
-  } else {
-    investment.value = stepInvestment;
-  }
-});
 </script>
 
 <style src="@vueform/slider/themes/default.css"></style>
@@ -308,7 +217,7 @@ watch(investmentType, (newValue, oldValue) => {
   text-align: right;
   outline: 0px;
   background-color: #fbfbfa;
-  width: 60px;
+  width: 72px;
   font-size: medium;
 }
 

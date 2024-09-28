@@ -1,32 +1,10 @@
 <template>
   <div>
-    <h1 style="text-align: center">SIP Calculator</h1>
-    <div>
-      <div :class="$style.toggleContainer">
-        <div
-          :class="[$style.option, investmentType === 'SIP' ? $style.selected : '']"
-          @click="onInvestmentTypeChange('SIP')"
-        >
-          SIP
-        </div>
-        <div
-          :class="[$style.option, investmentType === 'Lumpsum' ? $style.selected : '']"
-          @click="onInvestmentTypeChange('Lumpsum')"
-        >
-          Lumpsum
-        </div>
-        <div
-          :class="[$style.option, investmentType === 'step' ? $style.selected : '']"
-          @click="onInvestmentTypeChange('step')"
-        >
-          Step Up SIP
-        </div>
-      </div>
-    </div>
+    <h1 style="text-align: center">FIRE Calculator</h1>
     <div>
       <div :class="$style.options">
         <div :class="$style.category">
-          <span> {{ investmentTitle }} </span>
+          <span> Monthly Expense </span>
           <div style="display: flex; justify-content: flex-end">
             <span v-if="showError" :class="$style.tooltip">
               <i class="fas fa-exclamation-circle"></i>
@@ -39,7 +17,7 @@
                 <div
                   v-if="showInvestmentText && !showError"
                   @click="showInvestmentText = false"
-                  style="width: 64px; display: flex; justify-content: flex-end"
+                  style="width: 76px; display: flex; justify-content: flex-end"
                 >
                   {{ formatPrice(investment) }}
                 </div>
@@ -56,32 +34,8 @@
         </div>
         <Slider
           v-model="investment"
-          :max="1000000"
-          :step="investmentInterval"
-          :tooltips="false"
-          :lazy="false"
-          @update="onValueChange()"
-        />
-      </div>
-      <div v-if="investmentType == 'step'" :class="$style.options">
-        <div :class="$style.category">
-          <span> Annual step up (%) </span>
-          <div style="display: flex; justify-content: flex-end">
-            <span v-if="stepup < 1" :class="$style.tooltip">
-              <i class="fas fa-exclamation-circle"></i>
-              <span :class="$style['tooltip-text']" style="left: -700%"
-                >Value must greater than 1</span
-              >
-            </span>
-            <div :class="$style['input-field']">
-              <input type="number" v-model="stepup" min="1" :class="$style['text-box']" />
-            </div>
-          </div>
-        </div>
-        <Slider
-          v-model="stepup"
-          :max="50"
-          :step="1"
+          :max="100000"
+          :step="5000"
           :tooltips="false"
           :lazy="false"
           @update="onValueChange()"
@@ -89,7 +43,48 @@
       </div>
       <div :class="$style.options">
         <div :class="$style.category">
-          <span> Expected Return (%) </span>
+          <span> Current Age </span>
+          <div style="display: flex; justify-content: flex-end">
+            <span v-if="currentAge < 1" :class="$style.tooltip">
+              <i class="fas fa-exclamation-circle"></i>
+              <span :class="$style['tooltip-text']" style="left: -700%"
+                >Value must greater than 1</span
+              >
+            </span>
+            <div :class="$style['input-field']">
+              <input type="number" v-model="currentAge" min="1" :class="$style['text-box']" />
+            </div>
+          </div>
+        </div>
+        <Slider v-model="currentAge" :tooltips="false" :lazy="false" @update="onValueChange()" />
+      </div>
+      <div :class="$style.options">
+        <div :class="$style.category">
+          <span> Retirement Age </span>
+          <div style="display: flex; justify-content: flex-end">
+            <span v-if="retirementAge < 1" :class="$style.tooltip">
+              <i class="fas fa-exclamation-circle"></i>
+              <span :class="$style['tooltip-text']" style="left: -700%"
+                >Value must greater than 1</span
+              >
+            </span>
+            <div :class="$style['input-field']">
+              <input type="number" v-model="retirementAge" min="1" :class="$style['text-box']" />
+            </div>
+          </div>
+        </div>
+        <Slider
+          v-model="retirementAge"
+          :max="30"
+          :step="0.1"
+          :tooltips="false"
+          :lazy="false"
+          @update="onValueChange()"
+        />
+      </div>
+      <div :class="$style.options">
+        <div :class="$style.category">
+          <span> Rate of Inflation (%) </span>
           <div style="display: flex; justify-content: flex-end">
             <span v-if="expectedReturn < 1" :class="$style.tooltip">
               <i class="fas fa-exclamation-circle"></i>
@@ -111,24 +106,25 @@
           @update="onValueChange()"
         />
       </div>
+
       <div :class="$style.options">
         <div :class="$style.category">
-          <span> Time Period (Yr) </span>
+          <span> Desired Coast FIRE age </span>
           <div style="display: flex; justify-content: flex-end">
-            <span v-if="timePeriod < 1" :class="$style.tooltip">
+            <span v-if="fireAge < 1" :class="$style.tooltip">
               <i class="fas fa-exclamation-circle"></i>
               <span :class="$style['tooltip-text']" style="left: -700%"
                 >Value must greater than 1</span
               >
             </span>
             <div :class="$style['input-field']">
-              <input type="number" v-model="timePeriod" min="1" :class="$style['text-box']" />
+              <input type="number" v-model="fireAge" min="1" :class="$style['text-box']" />
             </div>
           </div>
         </div>
 
         <Slider
-          v-model="timePeriod"
+          v-model="fireAge"
           :max="60"
           :step="1"
           :tooltips="false"
@@ -137,57 +133,52 @@
         />
       </div>
     </div>
-
     <div :class="$style.output">
       <div :class="$style.category">
-        Invested Amount
-        <span>{{ formatPrice(totalInvestment) }}</span>
+        Expense Today
+        <span>{{ formatPrice(expenseToday) }}</span>
       </div>
       <div :class="$style.category">
-        Est. returns<span>{{ formatPrice(estimatedReturns) }}</span>
+        Expense At {{ retirementAge }}<span>{{ formatPrice(expenseAtRetirement) }}</span>
       </div>
       <div :class="$style.category">
-        Future Value<span>{{ formatPrice(totalReturn) }}</span>
+        LEAN FIRE <span>{{ formatPrice(leanFIREValue) }}</span>
+      </div>
+      <div :class="$style.category">
+        FIRE <span>{{ formatPrice(fireValue) }}</span>
+      </div>
+      <div :class="$style.category">
+        FAT FIRE <span>{{ formatPrice(fatFIREValue) }}</span>
+      </div>
+      <div :class="$style.category">
+        COAST FIRE <span>{{ formatPrice(coastFIREValue) }}</span>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
-import { calculateSIP, calculateLump, calculateStepUpSIP } from './sip-calculator';
+import { computed, onMounted, ref } from 'vue';
 import Slider from '@vueform/slider';
+import { calculateFIRE } from './fire-claculator';
 
-const emits = defineEmits(['update']);
-
-const investment = ref(0);
-const expectedReturn = ref(0);
-const timePeriod = ref(0);
-const totalInvestment = ref(0);
-const estimatedReturns = ref(0);
-const stepup = ref(0);
-const totalReturn = ref(0);
+const investment = ref(50000);
+const expectedReturn = ref(10);
+const expenseToday = ref(0);
+const expenseAtRetirement = ref(0);
+const leanFIREValue = ref(0);
+const fireValue = ref(0);
+const coastFIREValue = ref(0);
+const fatFIREValue = ref(0);
 const showInvestmentText = ref(true);
-const investmentType = ref('SIP');
+const currentAge = ref(20);
+const retirementAge = ref(40);
+const fireAge = ref(22);
 const showError = computed(() => investment.value < 100);
-const investmentInterval = ref(1);
 
 onMounted(() => {
-  investment.value = 25000;
-  expectedReturn.value = 12;
-  timePeriod.value = 10;
-  stepup.value = 10;
   onValueChange();
 });
-
-const investmentTitle = computed(() =>
-  investmentType.value === 'SIP' ? 'Monthly Investment' : 'Total Investment'
-);
-
-const onInvestmentTypeChange = (type: string) => {
-  investmentType.value = type;
-  onValueChange();
-};
 
 const formatPrice = (price: number) => {
   if (isNaN(price)) {
@@ -202,58 +193,22 @@ const formatPrice = (price: number) => {
 };
 
 const onValueChange = () => {
-  if (investment.value > 100000) {
-    investment.value = Math.round(investment.value / 5000) * 5000;
-  }
+  const { annualExpenseToday, annualExpenseAtRetirement, leanFIRE, coastFIRE, fire, fatFIRE } =
+    calculateFIRE(
+      investment.value,
+      currentAge.value,
+      retirementAge.value,
+      expectedReturn.value,
+      fireAge.value
+    );
 
-  investmentInterval.value = investment.value < 500 ? 1 : investment.value < 100000 ? 500 : 5000;
-
-  const {
-    totalInvestment: totalInvestedAmount,
-    estimatedReturns: finalEstimatedReturns,
-    totalReturn: finalReturns
-  } = investmentType.value === 'SIP'
-    ? calculateSIP(timePeriod.value, investment.value, expectedReturn.value)
-    : investmentType.value === 'step'
-      ? calculateStepUpSIP(timePeriod.value, investment.value, stepup.value, expectedReturn.value)
-      : calculateLump(timePeriod.value, investment.value, expectedReturn.value);
-
-  totalInvestment.value = totalInvestedAmount;
-  estimatedReturns.value = finalEstimatedReturns;
-  totalReturn.value = finalReturns;
-
-  emits('update', {
-    totalInvestment: totalInvestment.value,
-    estimatedReturns: estimatedReturns.value,
-    totalReturn: totalReturn.value,
-    expectedReturn: expectedReturn.value,
-    investment: investment.value,
-    investmentType: investmentType.value,
-    years: timePeriod.value
-  });
+  expenseToday.value = annualExpenseToday;
+  expenseAtRetirement.value = annualExpenseAtRetirement;
+  leanFIREValue.value = leanFIRE;
+  fireValue.value = fire;
+  coastFIREValue.value = coastFIRE;
+  fatFIREValue.value = fatFIRE;
 };
-
-let sipInvestment = 25000;
-let LumpsumInvestment = 25000;
-let stepInvestment = 25000;
-
-watch(investmentType, (newValue, oldValue) => {
-  if (oldValue === 'SIP') {
-    sipInvestment = investment.value;
-  } else if (oldValue === 'Lumpsum') {
-    LumpsumInvestment = investment.value;
-  } else {
-    stepInvestment = investment.value;
-  }
-
-  if (newValue === 'SIP') {
-    investment.value = sipInvestment;
-  } else if (newValue === 'Lumpsum') {
-    investment.value = LumpsumInvestment;
-  } else {
-    investment.value = stepInvestment;
-  }
-});
 </script>
 
 <style src="@vueform/slider/themes/default.css"></style>
@@ -308,7 +263,7 @@ watch(investmentType, (newValue, oldValue) => {
   text-align: right;
   outline: 0px;
   background-color: #fbfbfa;
-  width: 60px;
+  width: 72px;
   font-size: medium;
 }
 
