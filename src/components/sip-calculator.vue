@@ -154,7 +154,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, isVNode, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { calculateSIP, calculateLump, calculateStepUpSIP } from './sip-calculator';
 import Slider from '@vueform/slider';
 
@@ -202,6 +202,10 @@ const formatPrice = (price: number) => {
 };
 
 const onValueChange = () => {
+  if (investment.value > 100000) {
+    investment.value = Math.round(investment.value / 5000) * 5000;
+  }
+
   investmentInterval.value = investment.value < 500 ? 1 : investment.value < 100000 ? 500 : 5000;
 
   const {
@@ -228,6 +232,28 @@ const onValueChange = () => {
     years: timePeriod.value
   });
 };
+
+let sipInvestment = 25000;
+let LumpsumInvestment = 25000;
+let stepInvestment = 25000;
+
+watch(investmentType, (newValue, oldValue) => {
+  if (oldValue === 'SIP') {
+    sipInvestment = investment.value;
+  } else if (oldValue === 'Lumpsum') {
+    LumpsumInvestment = investment.value;
+  } else {
+    stepInvestment = investment.value;
+  }
+
+  if (newValue === 'SIP') {
+    investment.value = sipInvestment;
+  } else if (newValue === 'Lumpsum') {
+    investment.value = LumpsumInvestment;
+  } else {
+    investment.value = stepInvestment;
+  }
+});
 </script>
 
 <style src="@vueform/slider/themes/default.css"></style>
