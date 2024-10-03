@@ -2,10 +2,10 @@
   <div :class="$style.main">
     <div :class="$style.container">
       <SipCalculator @update="onValuesUpdated($event)" :class="$style['sip-calculator']" />
-      <div v-if="!showNoDataMessage" :class="$style.chartContainer">
+      <div :class="$style.chartContainer">
         <Pie :data="data" :options="chartOptions" />
       </div>
-      <div v-if="!showNoDataMessage" :class="$style.LineChartContainer">
+      <div :class="$style.LineChartContainer">
         <Bar :data="lineData" :options="barChartOptions" />
       </div>
     </div>
@@ -28,7 +28,13 @@ import {
 } from 'chart.js';
 import { ref } from 'vue';
 import { Pie, Bar } from 'vue-chartjs';
-import { calculateLump, calculateSIP } from './components/sip-calculator';
+import {
+  calculateLump,
+  calculateSIP,
+  calculateStepUpSIP,
+  calculateYearlySIP,
+  formatCurrencyValue
+} from './components/sip-calculator';
 
 ChartJS.register(
   CategoryScale,
@@ -42,23 +48,21 @@ ChartJS.register(
   BarElement
 );
 
-const chartOptions = {
+const chartOptions: any = {
   responsive: true,
   maintainAspectRatio: false,
   plugins: {
     tooltip: {
       enabled: false
+    },
+    legend: {
+      display: true,
+      position: 'bottom',
+      labels: {
+        usePointStyle: true,
+        pointStyle: 'rectRounded'
+      }
     }
-  }
-};
-
-const formatNumber = (value: number) => {
-  if (value >= 10000000) {
-    return Math.round(value / 10000000) + 'Cr';
-  } else if (value >= 100000) {
-    return Math.round(value / 100000) + 'Lakhs';
-  } else {
-    return value;
   }
 };
 
@@ -76,9 +80,8 @@ const barChartOptions = {
         },
         afterLabel: function (context: any) {
           return [
-            `Principal: ${formatNumber(investedAmount.value)}`,
-            `Interest Rate: ${interestRate.value}%`,
-            `Returns: ${formatNumber(context.raw)}`
+            `Principal: ${formatCurrencyValue(investedAmount.value[context.dataIndex])}`,
+            `Returns: ${formatCurrencyValue(returns.value[context.dataIndex])}`
           ];
         },
         title: function () {
@@ -106,7 +109,7 @@ const barChartOptions = {
       },
       ticks: {
         callback: function (value: any) {
-          return formatNumber(value);
+          return formatCurrencyValue(value);
         }
       }
     }
@@ -114,7 +117,7 @@ const barChartOptions = {
 };
 
 const data = ref({
-  labels: ['Invested', 'Ést. returns'],
+  labels: ['Invested', 'Est. returns'],
   datasets: [
     {
       backgroundColor: ['#dcdcdc ', '#36A2EB'],
@@ -133,8 +136,8 @@ const lineData = ref({
   ]
 });
 
-const investedAmount = ref(0);
-const interestRate = ref(0);
+const investedAmount = ref([]);
+const returns = ref([]);
 
 const calculateChartData = (
   totalInvestment: number,
@@ -143,8 +146,9 @@ const calculateChartData = (
 ) => {
   const investmentAmount = (totalInvestment / totalReturn) * 100;
   const returns = (estimatedReturns / totalReturn) * 100;
+
   return {
-    labels: ['Invested', 'Ést. returns'],
+    labels: ['Invested', 'Est. returns'],
     datasets: [
       {
         backgroundColor: ['#f4c430 ', '#36A2EB'],
@@ -158,21 +162,41 @@ const calculateLineData = (
   investment: number,
   expectedReturn: number,
   investmentType: string,
-  years: number
+  years: number,
+  stepup = 0
 ) => {
   const values: any = [];
   const labels: any = [];
   const investmentValues: any = [];
+
   for (let i = 1; i <= years; i += 1) {
-    const { totalInvestment, totalReturn } =
-      investmentType === 'SIP'
-        ? calculateSIP(i, investment, expectedReturn)
+    const calculateReturns: any = () => {
+      if (investmentType === 'SIP') {
+        return calculateSIP(i, investment, expectedReturn);
+      } else if (investmentType === 'Lmpsum') {
+        return calculateLump(i, investment, expectedReturn);
+      } else if (investmentType === 'step') {
+        return calculateStepUpSIP(i, investment, stepup, expectedReturn);
+      } else if (investmentType === 'yearly') {
+        return calculateYearlySIP(investment, expectedReturn, i);
+      }
+    };
+
+    const { totalInvestment, totalReturn } = calculateReturns();
+    investmentType === 'SIP'
+      ? calculateSIP(i, investment, expectedReturn)
+      : investmentType === 'step'
+        ? calculateStepUpSIP(i, investment, stepup, expectedReturn)
         : calculateLump(i, investment, expectedReturn);
 
     labels.push(i);
     values.push(totalReturn);
     investmentValues.push(totalInvestment);
   }
+
+  investedAmount.value = investmentValues;
+  returns.value = values;
+
   return {
     labels: labels,
     datasets: [
@@ -190,8 +214,6 @@ const calculateLineData = (
   };
 };
 
-const showNoDataMessage = ref(false);
-
 const onValuesUpdated = (updatedData: any) => {
   const {
     totalInvestment,
@@ -200,7 +222,8 @@ const onValuesUpdated = (updatedData: any) => {
     expectedReturn,
     investment,
     investmentType,
-    years
+    years,
+    stepup
   } = updatedData;
 
   const fieldsToCheck = [
@@ -212,19 +235,35 @@ const onValuesUpdated = (updatedData: any) => {
     years
   ];
 
-  showNoDataMessage.value = false;
-
-  fieldsToCheck.forEach((value) => {
+  for (let i = 0; i < fieldsToCheck.length; i++) {
+    const value = fieldsToCheck[i];
     if (isNaN(value) || value === '' || value === 0) {
-      showNoDataMessage.value = true;
-    }
-  });
+      data.value = {
+        labels: ['Invested', 'Ést. returns'],
+        datasets: [
+          {
+            backgroundColor: ['#dcdcdc ', '#36A2EB'],
+            data: [100, 0]
+          }
+        ]
+      };
 
-  investedAmount.value = totalInvestment;
-  interestRate.value = expectedReturn;
+      lineData.value = {
+        labels: [],
+        datasets: [
+          {
+            label: 'Est. returns',
+            data: []
+          }
+        ]
+      };
+
+      return;
+    }
+  }
 
   data.value = calculateChartData(totalInvestment, estimatedReturns, totalReturn);
-  lineData.value = calculateLineData(investment, expectedReturn, investmentType, years);
+  lineData.value = calculateLineData(investment, expectedReturn, investmentType, years, stepup);
 };
 </script>
 
@@ -234,6 +273,7 @@ const onValuesUpdated = (updatedData: any) => {
   justify-content: center;
   flex-direction: column;
   align-items: center;
+  background-color: rgba(246, 238, 246, 0.234);
 }
 
 .container {
@@ -243,15 +283,14 @@ const onValuesUpdated = (updatedData: any) => {
   padding: 1rem;
   box-sizing: border-box;
   justify-content: center;
-  width: 60%;
-  border-radius: 30px;
-  background-color: #fbfbfa;
+  width: 80%;
 }
 
 .chartContainer {
   max-width: 300px;
+  height: 280px;
   min-width: 0;
-  padding-top: 8%;
+  padding-top: 15%;
 }
 
 .LineChartContainer {
@@ -270,11 +309,12 @@ const onValuesUpdated = (updatedData: any) => {
   }
 }
 
-@media (max-width: 599px) {
+@media (max-width: 1200px) {
   .sip-calculator,
   .chartContainer,
   .LineChartContainer {
     flex: 1 1 100%;
+    padding: 0;
   }
   .container {
     width: 100%;

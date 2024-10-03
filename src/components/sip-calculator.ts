@@ -39,7 +39,8 @@ export const calculateStepUpSIP = (
     const yearlyInvestment = investment * Math.pow(1 + annualStepUp / 100, year);
     totalInvestment += yearlyInvestment * 12;
     for (let month = 0; month < 12; month++) {
-      totalReturn += yearlyInvestment * Math.pow(1 + monthlyReturnRate, (years - year) * 12 - month);
+      totalReturn +=
+        yearlyInvestment * Math.pow(1 + monthlyReturnRate, (years - year) * 12 - month);
     }
   }
 
@@ -48,4 +49,26 @@ export const calculateStepUpSIP = (
     estimatedReturns: Math.round(totalReturn - totalInvestment),
     totalReturn: Math.round(totalReturn)
   };
+};
+
+export const calculateYearlySIP = (investment: number, expectedReturn: number, years: number) => {
+  const rate = expectedReturn / 100;
+  const totalInvestment = investment * years;
+  const totalReturn = investment * ((Math.pow(1 + rate, years) - 1) / rate) * (1 + rate);
+  
+  return {
+    totalInvestment: Math.round(totalInvestment),
+    estimatedReturns: Math.round(totalReturn - totalInvestment),
+    totalReturn: Math.round(totalReturn)
+  };
+};
+
+export const formatCurrencyValue = (value: number) => {
+  if (value >= 10000000) {
+    return (value / 10000000).toFixed(2) + ' Cr';
+  } else if (value >= 100000) {
+    return (value / 100000).toFixed(2) + ' Lakhs';
+  } else {
+    return value.toString();
+  }
 };

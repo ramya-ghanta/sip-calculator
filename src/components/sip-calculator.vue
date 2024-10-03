@@ -1,30 +1,9 @@
 <template>
   <div>
     <h1 style="text-align: center">SIP Calculator</h1>
+    <SIPOptions @onInvestmentTypeChange="onInvestmentTypeChange" />
     <div>
-      <div :class="$style.toggleContainer">
-        <div
-          :class="[$style.option, investmentType === 'SIP' ? $style.selected : '']"
-          @click="onInvestmentTypeChange('SIP')"
-        >
-          SIP
-        </div>
-        <div
-          :class="[$style.option, investmentType === 'Lumpsum' ? $style.selected : '']"
-          @click="onInvestmentTypeChange('Lumpsum')"
-        >
-          Lumpsum
-        </div>
-        <div
-          :class="[$style.option, investmentType === 'step' ? $style.selected : '']"
-          @click="onInvestmentTypeChange('step')"
-        >
-          Step Up SIP
-        </div>
-      </div>
-    </div>
-    <div>
-      <div :class="$style.options">
+      <div v-if="investmentType != 'Lumpsum'" :class="$style.options">
         <div :class="$style.category">
           <span> {{ investmentTitle }} </span>
           <div style="display: flex; justify-content: flex-end">
@@ -39,7 +18,8 @@
                 <div
                   v-if="showInvestmentText && !showError"
                   @click="showInvestmentText = false"
-                  style="width: 64px; display: flex; justify-content: flex-end"
+                  style="line-height: 18px; font-size: medium"
+                  :class="$style['text-box']"
                 >
                   {{ formatPrice(investment) }}
                 </div>
@@ -57,7 +37,111 @@
         <Slider
           v-model="investment"
           :max="1000000"
+          :step="1"
+          :tooltips="false"
+          :lazy="false"
+          @update="onValueChange()"
+        />
+      </div>
+      <div v-if="investmentType === 'Lumpsum'" :class="$style.options">
+        <div :class="$style.category">
+          <span> {{ investmentTitle }} </span>
+          <div style="display: flex; justify-content: flex-end">
+            <span v-if="showError" :class="$style.tooltip">
+              <i class="fas fa-exclamation-circle"></i>
+              <span :class="$style['tooltip-text']" style="left: -1425%"
+                >Value must be between 100 and 1,000,000</span
+              >
+            </span>
+            <div :class="$style['input-field']">
+              <div>
+                <div
+                  v-if="showLumpInvestmentText && !showError"
+                  @click="showLumpInvestmentText = false"
+                  style="line-height: 18px; font-size: medium"
+                  :class="$style['text-box']"
+                >
+                  {{ formatPrice(lumpInvestment) }}
+                </div>
+                <input
+                  type="number"
+                  v-model="lumpInvestment"
+                  :class="$style['text-box']"
+                  @blur="showLumpInvestmentText = true"
+                  v-else
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+        <Slider
+          v-model="lumpInvestment"
+          :max="200000000"
           :step="investmentInterval"
+          :tooltips="false"
+          :lazy="false"
+          @update="onValueChange()"
+        />
+      </div>
+      <div v-if="investmentType == 'swp'" :class="$style.options">
+        <div :class="$style.category">
+          <span> Withdrawl Per Month </span>
+          <div style="display: flex; justify-content: flex-end">
+            <span v-if="showError" :class="$style.tooltip">
+              <i class="fas fa-exclamation-circle"></i>
+              <span :class="$style['tooltip-text']" style="left: -1425%"
+                >Value must be between 100 and 1,000,000</span
+              >
+            </span>
+            <div :class="$style['input-field']">
+              <div>
+                <div
+                  v-if="showSwpWithdrawlText && !showError"
+                  @click="showSwpWithdrawlText = false"
+                  style="line-height: 18px; font-size: medium"
+                  :class="$style['text-box']"
+                >
+                  {{ formatPrice(investment) }}
+                </div>
+                <input
+                  type="number"
+                  v-model="swpWithdrawl"
+                  :class="$style['text-box']"
+                  @blur="showSwpWithdrawlText = true"
+                  v-else
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+        <Slider
+          v-model="swpWithdrawl"
+          :max="1000000"
+          :step="1"
+          :tooltips="false"
+          :lazy="false"
+          @update="onValueChange()"
+        />
+      </div>
+      <div v-if="investmentType == 'step'" :class="$style.options">
+        <div :class="$style.category">
+          <span> Annual step up (%) </span>
+          <div style="display: flex; justify-content: flex-end">
+            <span v-if="stepup < 1" :class="$style.tooltip">
+              <i class="fas fa-exclamation-circle"></i>
+              <span :class="$style['tooltip-text']" style="left: -700%"
+                >Value must greater than 1</span
+              >
+            </span>
+            <div :class="$style['input-field']">
+              <input type="number" v-model="stepup" min="1" :class="$style['text-box']" />
+            </div>
+          </div>
+        </div>
+        <Slider
+          v-model="stepup"
+          :max="50"
+          :step="1"
           :tooltips="false"
           :lazy="false"
           @update="onValueChange()"
@@ -137,51 +221,54 @@
         />
       </div>
     </div>
-
-    <div :class="$style.output">
-      <div :class="$style.category">
-        Invested Amount
-        <span>{{ formatPrice(totalInvestment) }}</span>
-      </div>
-      <div :class="$style.category">
-        Est. returns<span>{{ formatPrice(estimatedReturns) }}</span>
-      </div>
-      <div :class="$style.category">
-        Future Value<span>{{ formatPrice(totalReturn) }}</span>
-      </div>
-    </div>
+    <SIPOutput />
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue';
-import { calculateSIP, calculateLump, calculateStepUpSIP } from './sip-calculator';
+import {
+  calculateSIP,
+  calculateLump,
+  calculateStepUpSIP,
+  calculateYearlySIP
+} from './sip-calculator';
+import SIPOutput from './sip-output.vue';
+import SIPOptions from './sip-options.vue';
 import Slider from '@vueform/slider';
+import { useMainStore } from '../store';
+import { storeToRefs } from 'pinia';
+
+const { investmentValue, estimatedReturnsValue, totalReturensValue } = storeToRefs(useMainStore());
 
 const emits = defineEmits(['update']);
 
-const investment = ref(0);
-const expectedReturn = ref(0);
-const timePeriod = ref(0);
+const investment = ref(25000);
+const lumpInvestment = ref(100000);
+const swpWithdrawl = ref(10000);
+const expectedReturn = ref(12);
+const timePeriod = ref(10);
 const totalInvestment = ref(0);
 const estimatedReturns = ref(0);
-const stepup = ref(0);
+const stepup = ref(10);
 const totalReturn = ref(0);
 const showInvestmentText = ref(true);
+const showLumpInvestmentText = ref(true);
+const showSwpWithdrawlText = ref(true);
 const investmentType = ref('SIP');
-const showError = computed(() => investment.value < 100);
+const showError = computed(() =>
+  investmentType.value === 'Lumpsum' ? lumpInvestment.value < 100 : investment.value < 100
+);
 const investmentInterval = ref(1);
 
 onMounted(() => {
-  investment.value = 25000;
-  expectedReturn.value = 12;
-  timePeriod.value = 10;
-  stepup.value = 10;
   onValueChange();
 });
 
 const investmentTitle = computed(() =>
-  investmentType.value === 'SIP' ? 'Monthly Investment' : 'Total Investment'
+  investmentType.value === 'SIP' || investmentType.value === 'step'
+    ? 'Monthly Investment'
+    : 'Total Investment'
 );
 
 const onInvestmentTypeChange = (type: string) => {
@@ -195,30 +282,38 @@ const formatPrice = (price: number) => {
   }
 
   return new Intl.NumberFormat('en-IN', {
-    style: 'currency',
-    currency: 'INR',
     maximumFractionDigits: 0
   }).format(price);
 };
 
 const onValueChange = () => {
-  if (investment.value > 100000) {
-    investment.value = Math.round(investment.value / 5000) * 5000;
-  }
-
-  investmentInterval.value = investment.value < 500 ? 1 : investment.value < 100000 ? 500 : 5000;
+  const calculateReturns: any = () => {
+    if (investmentType.value === 'SIP') {
+      return calculateSIP(timePeriod.value, investment.value, expectedReturn.value);
+    } else if (investmentType.value === 'Lmpsum') {
+      return calculateLump(timePeriod.value, lumpInvestment.value, expectedReturn.value);
+    } else if (investmentType.value === 'step') {
+      return calculateStepUpSIP(
+        timePeriod.value,
+        investment.value,
+        stepup.value,
+        expectedReturn.value
+      );
+    } else if (investmentType.value === 'yearly') {
+      return calculateYearlySIP(investment.value, expectedReturn.value, timePeriod.value);
+    }
+  };
 
   const {
     totalInvestment: totalInvestedAmount,
     estimatedReturns: finalEstimatedReturns,
     totalReturn: finalReturns
-  } = investmentType.value === 'SIP'
-    ? calculateSIP(timePeriod.value, investment.value, expectedReturn.value)
-    : investmentType.value === 'step'
-      ? calculateStepUpSIP(timePeriod.value, investment.value, stepup.value, expectedReturn.value)
-      : calculateLump(timePeriod.value, investment.value, expectedReturn.value);
+  } = calculateReturns();
 
   totalInvestment.value = totalInvestedAmount;
+  investmentValue.value = totalInvestedAmount;
+  estimatedReturnsValue.value = finalEstimatedReturns;
+  totalReturensValue.value = finalReturns;
   estimatedReturns.value = finalEstimatedReturns;
   totalReturn.value = finalReturns;
 
@@ -227,31 +322,37 @@ const onValueChange = () => {
     estimatedReturns: estimatedReturns.value,
     totalReturn: totalReturn.value,
     expectedReturn: expectedReturn.value,
-    investment: investment.value,
+    investment: investmentType.value === 'Lumpsum' ? lumpInvestment.value : investment.value,
     investmentType: investmentType.value,
-    years: timePeriod.value
+    years: timePeriod.value,
+    stepup: stepup.value
   });
 };
 
 let sipInvestment = 25000;
 let LumpsumInvestment = 25000;
 let stepInvestment = 25000;
+let yearlyInvestment = 25000;
 
 watch(investmentType, (newValue, oldValue) => {
   if (oldValue === 'SIP') {
     sipInvestment = investment.value;
   } else if (oldValue === 'Lumpsum') {
     LumpsumInvestment = investment.value;
-  } else {
+  } else if (oldValue === 'step') {
     stepInvestment = investment.value;
+  } else if (oldValue === 'yearly') {
+    yearlyInvestment = investment.value;
   }
 
   if (newValue === 'SIP') {
     investment.value = sipInvestment;
   } else if (newValue === 'Lumpsum') {
     investment.value = LumpsumInvestment;
-  } else {
+  } else if (newValue === 'step') {
     investment.value = stepInvestment;
+  } else if (newValue === 'yearly') {
+    investment.value = yearlyInvestment;
   }
 });
 </script>
@@ -262,8 +363,8 @@ watch(investmentType, (newValue, oldValue) => {
 .options {
   display: flex;
   flex-direction: column;
-  padding-bottom: 5%;
-  gap: 0.5rem;
+  padding-bottom: 4%;
+  gap: 1rem;
 }
 
 .category {
@@ -284,36 +385,16 @@ watch(investmentType, (newValue, oldValue) => {
   padding: 1rem;
 }
 
-.toggleContainer {
-  display: flex;
-  gap: 1rem;
-  margin-bottom: 1rem;
-}
-
-.option {
-  padding: 5px 20px;
-  border-radius: 20px;
-  cursor: pointer;
-  background-color: #fbfbfa;
-  text-align: center;
-}
-
-.selected {
-  background-color: #10b981;
-  color: white;
-}
-
 .text-box {
   border: none;
+  background: transparent;
   text-align: right;
   outline: 0px;
-  background-color: #fbfbfa;
-  width: 60px;
+  background-color: #c1efd4;
+  opacity: 1;
+  padding: 0.2rem;
+  width: 86px;
   font-size: medium;
-}
-
-.input-field {
-  border-bottom: 1px dashed #10b981;
 }
 
 input::-webkit-outer-spin-button,
@@ -330,6 +411,7 @@ input[type='number'] {
   position: relative;
   cursor: pointer;
   color: red;
+  padding-right: 2px;
 }
 
 .tooltip-text {
@@ -349,5 +431,11 @@ input[type='number'] {
 
 .tooltip:hover .tooltip-text {
   visibility: visible;
+}
+
+@media (max-width: 600px) {
+  .option {
+    flex: auto;
+  }
 }
 </style>
