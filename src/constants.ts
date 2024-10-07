@@ -1,7 +1,7 @@
 export enum InvestmentTypes {
-  SIP = 'sip',
-  LUMPSUM = 'lumpsum',
-  STEPUP = 'stepup',
-  YEARLY = 'yearly',
-  SWP = 'swp'
+  SIP = 'SIP',
+  LUMPSUM = 'Lumpsum',
+  STEPUP = 'Step Up SIP',
+  YEARLY = 'Yearly SIP',
+  SWP = 'SWP'
 }

@@ -1,7 +1,6 @@
 <template>
   <div>
-    <h1 style="text-align: center">SIP Calculator</h1>
-    <SIPOptions @onInvestmentTypeChange="onInvestmentTypeChange" />
+    <h1 style="text-align: center; flex-grow: 1">{{ investmentType }} Calculator</h1>
     <div>
       <div v-if="investmentType != InvestmentTypes.LUMPSUM" :class="$style.options">
         <div :class="$style.category">
@@ -27,7 +26,11 @@
                   type="number"
                   v-model="investment"
                   :class="$style['text-box']"
-                  @blur="showInvestmentText = true"
+                  @blur="
+                    {
+                      scaleInvestment(), (showInvestmentText = true);
+                    }
+                  "
                   v-else
                 />
               </div>
@@ -35,8 +38,8 @@
           </div>
         </div>
         <Slider
-          v-model="investment"
-          :max="1000000"
+          v-model="sliderValue"
+          :max="380"
           :step="1"
           :tooltips="false"
           :lazy="false"
@@ -235,7 +238,6 @@
       </div>
     </div>
     <SIPOutput
-      :showSWPReturns="investmentType == InvestmentTypes.SWP"
       :years="timePeriod"
       :investment="investmentValue"
       :returns="estimatedReturnsValue"
@@ -243,27 +245,30 @@
       :totalWithdrawls="totalWithdrawals"
       :finalValue="finalValue"
       :stepUpReturns="steupReturns"
+      :investmentType="investmentType"
+      style="margin-top: 1rem"
     />
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue';
-import {
-  calculateSIP,
-  calculateLump,
-  calculateStepUpSIP,
-  calculateYearlySIP,
-  calculateSWP
-} from './sip-calculator';
+import { calculateSWP, calculateReturns } from './sip-calculator';
 import SIPOutput from './sip-output.vue';
-import SIPOptions from './sip-options.vue';
 import Slider from '@vueform/slider';
 import { InvestmentTypes } from '../constants';
 
 const emits = defineEmits(['update']);
 
+const props = defineProps({
+  investmentType: {
+    type: String,
+    required: true
+  }
+});
+
 const investment = ref(25000);
+const sliderValue = ref(25000);
 const lumpInvestment = ref(100000);
 const investmentValue = ref(0);
 const estimatedReturnsValue = ref(0);
@@ -279,29 +284,49 @@ const stepup = ref(10);
 const totalReturn = ref(0);
 const showInvestmentText = ref(true);
 const showLumpInvestmentText = ref(true);
-const investmentType = ref(InvestmentTypes.SIP);
 const totalWithdrawals = ref(0);
 const finalValue = ref(0);
 const steupReturns = ref(0);
 const showError = computed(() =>
-  investmentType.value === InvestmentTypes.LUMPSUM
+  props.investmentType === InvestmentTypes.LUMPSUM
     ? lumpInvestment.value < 100
     : investment.value < 100
 );
 const investmentInterval = ref(1);
 
 onMounted(() => {
+  scaleInvestment();
   onValueChange();
 });
 
-const investmentTitle = computed(() =>
-  investmentType.value === InvestmentTypes.LUMPSUM ? 'Total Investment' : 'Monthly Investment'
-);
-
-const onInvestmentTypeChange = (type: InvestmentTypes) => {
-  investmentType.value = type;
-  onValueChange();
+const transformToDisplayValue = (value: number) => {
+  if (value <= 200) {
+    return value * 500;
+  } else {
+    return 100000 + (value - 200) * 5000;
+  }
 };
+
+const transformToSliderValue = (value: number) => {
+  if (value <= 100000) {
+    return value / 500;
+  } else {
+    return 200 + (value - 100000) / 5000;
+  }
+};
+
+watch(sliderValue, (newValue) => {
+  investment.value = transformToDisplayValue(newValue);
+  onValueChange();
+});
+
+const scaleInvestment = () => {
+  sliderValue.value = transformToSliderValue(investment.value);
+};
+
+const investmentTitle = computed(() =>
+  props.investmentType === InvestmentTypes.LUMPSUM ? 'Total Investment' : props.investmentType === InvestmentTypes.YEARLY ? "Yearly Investment": 'Monthly Investment'
+);
 
 const formatPrice = (price: number) => {
   if (isNaN(price)) {
@@ -314,32 +339,8 @@ const formatPrice = (price: number) => {
 };
 
 const onValueChange = () => {
-  const calculateReturns: any = () => {
-    if (investmentType.value === InvestmentTypes.SIP) {
-      return calculateSIP(timePeriod.value, investment.value, expectedReturn.value);
-    } else if (investmentType.value === InvestmentTypes.LUMPSUM) {
-      return calculateLump(timePeriod.value, lumpInvestment.value, expectedReturn.value);
-    } else if (
-      investmentType.value === InvestmentTypes.STEPUP ||
-      investmentType.value === InvestmentTypes.SWP
-    ) {
-      return calculateStepUpSIP(
-        timePeriod.value,
-        investment.value,
-        stepup.value,
-        expectedReturn.value
-      );
-    } else if (investmentType.value === InvestmentTypes.YEARLY) {
-      return calculateYearlySIP(investment.value, expectedReturn.value, timePeriod.value);
-    }
-  };
-
-  if (investmentType.value === InvestmentTypes.SWP) {
-    const {
-      totalWithdrawals: swpWithdrawls,
-      finalValue: swpFinal,
-      sipForFinalYear
-    } = calculateSWP(
+  if (props.investmentType === InvestmentTypes.SWP) {
+    const { totalWithdrawals: swpWithdrawls, finalValue: swpFinal } = calculateSWP(
       investment.value,
       expectedReturn.value,
       timePeriod.value,
@@ -351,14 +352,21 @@ const onValueChange = () => {
 
     totalWithdrawals.value = swpWithdrawls;
     finalValue.value = swpFinal;
-    steupReturns.value = sipForFinalYear;
   }
+
+  steupReturns.value = investment.value * Math.pow(1 + stepup.value / 100, timePeriod.value - 1);
 
   const {
     totalInvestment: totalInvestedAmount,
     estimatedReturns: finalEstimatedReturns,
     totalReturn: finalReturns
-  } = calculateReturns();
+  } = calculateReturns(
+    props.investmentType,
+    props.investmentType === InvestmentTypes.LUMPSUM ? lumpInvestment.value : investment.value,
+    expectedReturn.value,
+    timePeriod.value,
+    stepup.value
+  );
 
   totalInvestment.value = totalInvestedAmount;
   investmentValue.value = totalInvestedAmount;
@@ -373,39 +381,54 @@ const onValueChange = () => {
     totalReturn: totalReturn.value,
     expectedReturn: expectedReturn.value,
     investment:
-      investmentType.value === InvestmentTypes.LUMPSUM ? lumpInvestment.value : investment.value,
-    investmentType: investmentType.value,
+      props.investmentType === InvestmentTypes.LUMPSUM ? lumpInvestment.value : investment.value,
+    investmentType: props.investmentType,
     years: timePeriod.value,
-    stepup: stepup.value
+    stepup: stepup.value,
+    swpReturnRate: swpReturnRate.value,
+    swpWithdrawl: swpWithdrawl.value,
+    swpTenure: swpTenure.value
   });
 };
 
-let sipInvestment = 25000;
-let LumpsumInvestment = 25000;
-let stepInvestment = 25000;
-let yearlyInvestment = 25000;
+const sipInvestment = ref(25000);
+const LumpsumInvestment = ref(100000);
+const stepInvestment = ref(25000);
+const yearlyInvestment = ref(25000);
+const swpInvestment = ref(25000);
 
-watch(investmentType, (newValue, oldValue) => {
-  if (oldValue === InvestmentTypes.SIP || oldValue === InvestmentTypes.SWP) {
-    sipInvestment = investment.value;
-  } else if (oldValue === InvestmentTypes.LUMPSUM) {
-    LumpsumInvestment = investment.value;
-  } else if (oldValue === InvestmentTypes.STEPUP) {
-    stepInvestment = investment.value;
-  } else if (oldValue === InvestmentTypes.YEARLY) {
-    yearlyInvestment = investment.value;
-  }
+watch(
+  () => props.investmentType,
+  (newValue, oldValue) => {
+    if (oldValue === InvestmentTypes.SIP) {
+      sipInvestment.value = investment.value;
+    } else if (oldValue === InvestmentTypes.LUMPSUM) {
+      LumpsumInvestment.value = investment.value;
+    } else if (oldValue === InvestmentTypes.STEPUP) {
+      stepInvestment.value = investment.value;
+    } else if (oldValue === InvestmentTypes.YEARLY) {
+      yearlyInvestment.value = investment.value;
+    } else if (oldValue === InvestmentTypes.SWP) {
+      swpInvestment.value = investment.value;
+    }
 
-  if (newValue === InvestmentTypes.SIP || newValue == InvestmentTypes.SWP) {
-    investment.value = sipInvestment;
-  } else if (newValue === InvestmentTypes.LUMPSUM) {
-    investment.value = LumpsumInvestment;
-  } else if (newValue === InvestmentTypes.STEPUP) {
-    investment.value = stepInvestment;
-  } else if (newValue === InvestmentTypes.YEARLY) {
-    investment.value = yearlyInvestment;
-  }
-});
+    if (newValue === InvestmentTypes.SIP) {
+      investment.value = sipInvestment.value;
+    } else if (newValue === InvestmentTypes.LUMPSUM) {
+      investment.value = LumpsumInvestment.value;
+    } else if (newValue === InvestmentTypes.STEPUP) {
+      investment.value = stepInvestment.value;
+    } else if (newValue === InvestmentTypes.YEARLY) {
+      investment.value = yearlyInvestment.value;
+    } else if (newValue === InvestmentTypes.SWP) {
+      investment.value = swpInvestment.value;
+    }
+
+    scaleInvestment();
+    onValueChange();
+  },
+  { immediate: true }
+);
 </script>
 
 <style src="@vueform/slider/themes/default.css"></style>
@@ -415,7 +438,7 @@ watch(investmentType, (newValue, oldValue) => {
   display: flex;
   flex-direction: column;
   padding-bottom: 4%;
-  gap: 1rem;
+  gap: 1.5rem;
 }
 
 .category {

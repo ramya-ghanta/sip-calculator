@@ -1,3 +1,5 @@
+import { InvestmentTypes } from '@/constants';
+
 export const calculateSIP = (years: number, investment: number, expectedReturn: number) => {
   const totalMonths = years * 12;
   const totalInvestment = investment * totalMonths;
@@ -84,12 +86,9 @@ export const calculateSWP = (
     finalValue *= 1 + swpReturnRate / 100;
   }
 
-  const sipForFinalYear = investment * Math.pow(1 + stepUpRate / 100, years - 1);
-
   return {
     totalWithdrawals,
-    finalValue,
-    sipForFinalYear
+    finalValue
   };
 };
 
@@ -101,4 +100,38 @@ export const formatCurrencyValue = (value: number) => {
   } else {
     return value.toFixed(2);
   }
+};
+
+export const formatPrice = (price: number) => {
+  if (isNaN(price)) {
+    price = 0;
+  }
+
+  return new Intl.NumberFormat('en-IN', {
+    maximumFractionDigits: 0
+  }).format(price);
+};
+
+export const calculateReturns = (
+  investmentType: string,
+  investment: number,
+  returnRate: number,
+  years: number,
+  stepUpRate: number
+) => {
+  if (investmentType === InvestmentTypes.SIP) {
+    return calculateSIP(years, investment, returnRate);
+  } else if (investmentType === InvestmentTypes.LUMPSUM) {
+    return calculateLump(years, investment, returnRate);
+  } else if (investmentType === InvestmentTypes.STEPUP || investmentType === InvestmentTypes.SWP) {
+    return calculateStepUpSIP(years, investment, stepUpRate, returnRate);
+  } else if (investmentType === InvestmentTypes.YEARLY) {
+    return calculateYearlySIP(investment, returnRate, years);
+  }
+
+  return {
+    totalInvestment: 0,
+    estimatedReturns: 0,
+    totalReturn: 0
+  };
 };

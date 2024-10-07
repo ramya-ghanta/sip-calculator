@@ -1,12 +1,22 @@
 <template>
-  <div :class="$style.main">
-    <div :class="$style.container">
-      <SipCalculator @update="onValuesUpdated($event)" :class="$style['sip-calculator']" />
-      <div :class="$style.chartContainer">
-        <Pie :data="data" :options="chartOptions" />
+  <div>
+    <SIPOptions @onInvestmentTypeChange="onInvestmentTypeChange" />
+    <div :class="$style.main">
+      <div :class="$style.container">
+        <SipCalculator
+          @update="onValuesUpdated($event)"
+          :class="$style['sip-calculator']"
+          :investment-type="selectedInvestmentType"
+        />
+        <div :class="$style.chartContainer">
+          <Pie :data="data" :options="chartOptions" />
+        </div>
+        <div :class="$style.LineChartContainer">
+          <Bar :data="lineData" :options="barChartOptions" />
+        </div>
       </div>
-      <div :class="$style.LineChartContainer">
-        <Bar :data="lineData" :options="barChartOptions" />
+      <div>
+        <InvestmentTable :investment-details="investmentDetails" />
       </div>
     </div>
   </div>
@@ -14,6 +24,7 @@
 
 <script setup lang="ts">
 import SipCalculator from './components/sip-calculator.vue';
+import InvestmentTable from './components/investment-table.vue';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -26,16 +37,20 @@ import {
   ArcElement,
   BarElement
 } from 'chart.js';
-import { ref } from 'vue';
+import { ref, type Ref } from 'vue';
 import { Pie, Bar } from 'vue-chartjs';
 import {
   calculateLump,
+  calculateReturns,
   calculateSIP,
   calculateStepUpSIP,
+  calculateSWP,
   calculateYearlySIP,
-  formatCurrencyValue
+  formatCurrencyValue,
+  formatPrice
 } from './components/sip-calculator';
 import { InvestmentTypes } from './constants';
+import SIPOptions from './components/sip-options.vue';
 
 ChartJS.register(
   CategoryScale,
@@ -48,6 +63,12 @@ ChartJS.register(
   ArcElement,
   BarElement
 );
+
+const selectedInvestmentType = ref(InvestmentTypes.SIP);
+
+const onInvestmentTypeChange = (type: InvestmentTypes) => {
+  selectedInvestmentType.value = type;
+};
 
 const chartOptions: any = {
   responsive: true,
@@ -81,8 +102,8 @@ const barChartOptions = {
         },
         afterLabel: function (context: any) {
           return [
-            `Principal: ${formatCurrencyValue(investedAmount.value[context.dataIndex])}`,
-            `Returns: ${formatCurrencyValue(returns.value[context.dataIndex])}`
+            `Principal: ${formatCurrencyValue(investmentDetails.value.principal[context.dataIndex])}`,
+            `Total Wealth: ${formatCurrencyValue(investmentDetails.value.totalReturns[context.dataIndex])}`
           ];
         },
         title: function () {
@@ -137,8 +158,17 @@ const lineData = ref({
   ]
 });
 
-const investedAmount = ref([]);
-const returns = ref([]);
+const investmentDetails = ref({
+  investment: [] as number[],
+  principal: [] as number[],
+  expectedReturns: [] as number[],
+  totalReturns: [] as number[],
+  returnRate: 0,
+  investmentTitle: 'Monthly Investment'
+});
+
+const investmentValue: Ref<number[]> = ref([] as number[]);
+const expectedReturnsValues = ref([] as number[]);
 
 const calculateChartData = (
   totalInvestment: number,
@@ -164,29 +194,25 @@ const calculateLineData = (
   expectedReturn: number,
   investmentType: string,
   years: number,
-  stepup = 0
+  stepup: number,
+  swpReturnRate: number,
+  swpWithdrawl: number,
+  swpTenure: number
 ) => {
   const values: any = [];
   const labels: any = [];
   const investmentValues: any = [];
+  expectedReturnsValues.value = [];
+  investmentValue.value = [];
 
   for (let i = 1; i <= years; i += 1) {
-    const calculateReturns: any = () => {
-      if (investmentType === InvestmentTypes.SIP) {
-        return calculateSIP(i, investment, expectedReturn);
-      } else if (investmentType === InvestmentTypes.LUMPSUM) {
-        return calculateLump(i, investment, expectedReturn);
-      } else if (
-        investmentType === InvestmentTypes.STEPUP ||
-        investmentType === InvestmentTypes.SWP
-      ) {
-        return calculateStepUpSIP(i, investment, stepup, expectedReturn);
-      } else if (investmentType === InvestmentTypes.YEARLY) {
-        return calculateYearlySIP(investment, expectedReturn, i);
-      }
-    };
-
-    const { totalInvestment, totalReturn } = calculateReturns();
+    const { totalInvestment, totalReturn, estimatedReturns } = calculateReturns(
+      investmentType,
+      investment,
+      expectedReturn,
+      i,
+      stepup
+    );
     investmentType === InvestmentTypes.SIP
       ? calculateSIP(i, investment, expectedReturn)
       : investmentType === InvestmentTypes.STEPUP || investmentType === InvestmentTypes.SWP
@@ -196,12 +222,42 @@ const calculateLineData = (
           : calculateYearlySIP(investment, expectedReturn, i);
 
     labels.push(i);
-    values.push(totalReturn);
+    expectedReturnsValues.value.push(estimatedReturns);
     investmentValues.push(totalInvestment);
+
+    if (investmentType == InvestmentTypes.SWP) {
+      const { finalValue } = calculateSWP(
+        investment,
+        expectedReturn,
+        i,
+        swpWithdrawl,
+        swpTenure,
+        swpReturnRate,
+        stepup
+      );
+      values.push(finalValue);
+    } else {
+      values.push(totalReturn);
+    }
+
+    if (investmentType === InvestmentTypes.STEPUP || investmentType === InvestmentTypes.SWP) {
+      const yearlyInvestment = investment * Math.pow(1 + stepup / 100, i - 1);
+      investmentValue.value.push(yearlyInvestment);
+    } else {
+      investmentValue.value.push(investment);
+    }
   }
 
-  investedAmount.value = investmentValues;
-  returns.value = values;
+  investmentDetails.value = {
+    ...investmentDetails.value,
+    investment: investmentValue.value,
+    principal: investmentValues,
+    totalReturns: values,
+    expectedReturns: expectedReturnsValues.value,
+    returnRate: expectedReturn,
+    investmentTitle:
+      investmentType === InvestmentTypes.LUMPSUM ? 'Total Investment' : 'Monthly Investment'
+  };
 
   return {
     labels: labels,
@@ -229,7 +285,10 @@ const onValuesUpdated = (updatedData: any) => {
     investment,
     investmentType,
     years,
-    stepup
+    stepup,
+    swpReturnRate,
+    swpWithdrawl,
+    swpTenure
   } = updatedData;
 
   const fieldsToCheck = [
@@ -269,7 +328,16 @@ const onValuesUpdated = (updatedData: any) => {
   }
 
   data.value = calculateChartData(totalInvestment, estimatedReturns, totalReturn);
-  lineData.value = calculateLineData(investment, expectedReturn, investmentType, years, stepup);
+  lineData.value = calculateLineData(
+    investment,
+    expectedReturn,
+    investmentType,
+    years,
+    stepup,
+    swpReturnRate,
+    swpWithdrawl,
+    swpTenure
+  );
 };
 </script>
 
@@ -337,5 +405,7 @@ body {
     'Helvetica Neue', Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  padding: 0%;
+  margin: 0%;
 }
 </style>
