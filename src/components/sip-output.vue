@@ -2,38 +2,43 @@
   <div :class="$style.output">
     <div :class="$style.category">
       Invested Amount
-      <span>&#8377;{{ formatCurrencyValue(investment) }} ({{ formatPrice(investment) }})</span>
+      <span :class="$style['no-wrap']"
+        >&#8377;{{ formatCurrencyValue(investment) }} ({{ formatPrice(investment) }})</span
+      >
     </div>
     <div :class="$style.category">
-      Return generated in {{ years }} years<span
+      Return generated in {{ years }} years<span :class="$style['no-wrap']"
         >&#8377;{{ formatCurrencyValue(returns) }} ({{ formatPrice(returns) }})</span
       >
     </div>
     <div :class="$style.category">
-      Total Wealth generated in {{ years }} years<span
+      Total Wealth generated in {{ years }} years<span :class="$style['no-wrap']"
         >&#8377;{{ formatCurrencyValue(totalReturns) }} ({{ formatPrice(totalReturns) }})</span
       >
     </div>
-    <template v-if="showSWPReturns">
+    <div
+      v-if="investmentType == InvestmentTypes.STEPUP || investmentType == InvestmentTypes.SWP"
+      :class="$style.category"
+    >
+      {{ years }}th year SIP with step up<span :class="$style['no-wrap']"
+        >&#8377;{{ formatCurrencyValue(stepUpReturns) }} ({{ formatPrice(stepUpReturns) }})</span
+      >
+    </div>
+    <template v-if="investmentType == InvestmentTypes.SWP">
       <div :class="$style.category">
-        {{ years }}th year SIP with step up<span
-          >&#8377;{{ formatCurrencyValue(stepUpReturns) }} ({{ formatPrice(stepUpReturns) }})</span
-        >
-      </div>
-      <div :class="$style.category">
-        Wealth when starting SWP<span
+        Wealth when starting SWP<span :class="$style['no-wrap']"
           >&#8377;{{ formatCurrencyValue(totalReturns) }} ({{ formatPrice(totalReturns) }})</span
         >
       </div>
       <div :class="$style.category">
-        Total Withdrawl made<span
+        Total Withdrawl made<span :class="$style['no-wrap']"
           >&#8377;{{ formatCurrencyValue(totalWithdrawls) }} ({{
             formatPrice(totalWithdrawls)
           }})</span
         >
       </div>
       <div :class="$style.category">
-        Final Value<span
+        Final Value<span :class="$style['no-wrap']"
           >&#8377;{{ formatCurrencyValue(finalValue) }} ({{ formatPrice(finalValue) }})</span
         >
       </div>
@@ -42,14 +47,10 @@
 </template>
 
 <script setup lang="ts">
+import { InvestmentTypes } from '@/constants';
 import { formatCurrencyValue } from './sip-calculator';
 
 defineProps({
-  showSWPReturns: {
-    type: Boolean,
-    required: false,
-    default: false
-  },
   years: {
     type: Number,
     required: true
@@ -77,6 +78,10 @@ defineProps({
   stepUpReturns: {
     type: Number,
     required: true
+  },
+  investmentType: {
+    type: String,
+    required: true
   }
 });
 
@@ -96,6 +101,11 @@ const formatPrice = (price: number) => {
   display: flex;
   justify-content: space-between;
   flex-direction: row;
+  gap: 1rem;
+}
+
+.no-wrap {
+  white-space: nowrap;
 }
 
 .output {

@@ -27,7 +27,11 @@
                   type="number"
                   v-model="investment"
                   :class="$style['text-box']"
-                  @blur="showInvestmentText = true"
+                  @blur="
+                    {
+                      scaleInvestment(), (showInvestmentText = true);
+                    }
+                  "
                   v-else
                 />
               </div>
@@ -35,8 +39,8 @@
           </div>
         </div>
         <Slider
-          v-model="investment"
-          :max="1000000"
+          v-model="sliderValue"
+          :max="380"
           :step="1"
           :tooltips="false"
           :lazy="false"
@@ -235,7 +239,6 @@
       </div>
     </div>
     <SIPOutput
-      :showSWPReturns="investmentType == InvestmentTypes.SWP"
       :years="timePeriod"
       :investment="investmentValue"
       :returns="estimatedReturnsValue"
@@ -243,19 +246,15 @@
       :totalWithdrawls="totalWithdrawals"
       :finalValue="finalValue"
       :stepUpReturns="steupReturns"
+      :investmentType="investmentType"
+      style="margin-top: 1rem"
     />
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue';
-import {
-  calculateSIP,
-  calculateLump,
-  calculateStepUpSIP,
-  calculateYearlySIP,
-  calculateSWP
-} from './sip-calculator';
+import { calculateSWP, calculateReturns } from './sip-calculator';
 import SIPOutput from './sip-output.vue';
 import SIPOptions from './sip-options.vue';
 import Slider from '@vueform/slider';
@@ -264,6 +263,7 @@ import { InvestmentTypes } from '../constants';
 const emits = defineEmits(['update']);
 
 const investment = ref(25000);
+const sliderValue = ref(25000);
 const lumpInvestment = ref(100000);
 const investmentValue = ref(0);
 const estimatedReturnsValue = ref(0);
@@ -291,8 +291,33 @@ const showError = computed(() =>
 const investmentInterval = ref(1);
 
 onMounted(() => {
+  scaleInvestment();
   onValueChange();
 });
+
+const transformToDisplayValue = (value: number) => {
+  if (value <= 200) {
+    return value * 500;
+  } else {
+    return 100000 + (value - 200) * 5000;
+  }
+};
+
+const transformToSliderValue = (value: number) => {
+  if (value <= 100000) {
+    return value / 500;
+  } else {
+    return 200 + (value - 100000) / 5000;
+  }
+};
+
+watch(sliderValue, (newValue) => {
+  investment.value = transformToDisplayValue(newValue);
+});
+
+const scaleInvestment = () => {
+  sliderValue.value = transformToSliderValue(investment.value);
+};
 
 const investmentTitle = computed(() =>
   investmentType.value === InvestmentTypes.LUMPSUM ? 'Total Investment' : 'Monthly Investment'
@@ -300,6 +325,7 @@ const investmentTitle = computed(() =>
 
 const onInvestmentTypeChange = (type: InvestmentTypes) => {
   investmentType.value = type;
+  scaleInvestment();
   onValueChange();
 };
 
@@ -314,32 +340,8 @@ const formatPrice = (price: number) => {
 };
 
 const onValueChange = () => {
-  const calculateReturns: any = () => {
-    if (investmentType.value === InvestmentTypes.SIP) {
-      return calculateSIP(timePeriod.value, investment.value, expectedReturn.value);
-    } else if (investmentType.value === InvestmentTypes.LUMPSUM) {
-      return calculateLump(timePeriod.value, lumpInvestment.value, expectedReturn.value);
-    } else if (
-      investmentType.value === InvestmentTypes.STEPUP ||
-      investmentType.value === InvestmentTypes.SWP
-    ) {
-      return calculateStepUpSIP(
-        timePeriod.value,
-        investment.value,
-        stepup.value,
-        expectedReturn.value
-      );
-    } else if (investmentType.value === InvestmentTypes.YEARLY) {
-      return calculateYearlySIP(investment.value, expectedReturn.value, timePeriod.value);
-    }
-  };
-
   if (investmentType.value === InvestmentTypes.SWP) {
-    const {
-      totalWithdrawals: swpWithdrawls,
-      finalValue: swpFinal,
-      sipForFinalYear
-    } = calculateSWP(
+    const { totalWithdrawals: swpWithdrawls, finalValue: swpFinal } = calculateSWP(
       investment.value,
       expectedReturn.value,
       timePeriod.value,
@@ -351,14 +353,21 @@ const onValueChange = () => {
 
     totalWithdrawals.value = swpWithdrawls;
     finalValue.value = swpFinal;
-    steupReturns.value = sipForFinalYear;
   }
+
+  steupReturns.value = investment.value * Math.pow(1 + stepup.value / 100, timePeriod.value - 1);
 
   const {
     totalInvestment: totalInvestedAmount,
     estimatedReturns: finalEstimatedReturns,
     totalReturn: finalReturns
-  } = calculateReturns();
+  } = calculateReturns(
+    investmentType.value,
+    investmentType.value === InvestmentTypes.LUMPSUM ? lumpInvestment.value : investment.value,
+    expectedReturn.value,
+    timePeriod.value,
+    stepup.value
+  );
 
   totalInvestment.value = totalInvestedAmount;
   investmentValue.value = totalInvestedAmount;
@@ -376,7 +385,10 @@ const onValueChange = () => {
       investmentType.value === InvestmentTypes.LUMPSUM ? lumpInvestment.value : investment.value,
     investmentType: investmentType.value,
     years: timePeriod.value,
-    stepup: stepup.value
+    stepup: stepup.value,
+    swpReturnRate: swpReturnRate.value,
+    swpWithdrawl: swpWithdrawl.value,
+    swpTenure: swpTenure.value
   });
 };
 
@@ -415,7 +427,7 @@ watch(investmentType, (newValue, oldValue) => {
   display: flex;
   flex-direction: column;
   padding-bottom: 4%;
-  gap: 1rem;
+  gap: 1.5rem;
 }
 
 .category {
