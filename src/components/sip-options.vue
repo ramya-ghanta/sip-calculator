@@ -2,34 +2,34 @@
   <div>
     <div :class="$style['sip-options']">
       <div
-        :class="[$style.option, investmentType === 'SIP' ? $style.selected : '']"
-        @click="onInvestmentTypeChange('SIP')"
+        :class="[$style.option, investmentType === InvestmentTypes.SIP ? $style.selected : '']"
+        @click="onInvestmentTypeChange(InvestmentTypes.SIP)"
       >
         SIP
       </div>
       <div
-        :class="[$style.option, investmentType === 'Lumpsum' ? $style.selected : '']"
-        @click="onInvestmentTypeChange('Lumpsum')"
+        :class="[$style.option, investmentType === InvestmentTypes.LUMPSUM ? $style.selected : '']"
+        @click="onInvestmentTypeChange(InvestmentTypes.LUMPSUM)"
       >
         Lumpsum
       </div>
       <div
-        :class="[$style.option, investmentType === 'step' ? $style.selected : '']"
-        @click="onInvestmentTypeChange('step')"
+        :class="[$style.option, investmentType === InvestmentTypes.STEPUP ? $style.selected : '']"
+        @click="onInvestmentTypeChange(InvestmentTypes.STEPUP)"
       >
         Step Up SIP
       </div>
       <div
-        :class="[$style.option, investmentType === 'yearly' ? $style.selected : '']"
-        @click="onInvestmentTypeChange('yearly')"
+        :class="[$style.option, investmentType === InvestmentTypes.YEARLY ? $style.selected : '']"
+        @click="onInvestmentTypeChange(InvestmentTypes.YEARLY)"
       >
         Yearly SIP
       </div>
       <div
-        :class="[$style.option, investmentType === 'swp' ? $style.selected : '']"
-        @click="onInvestmentTypeChange('swp')"
+        :class="[$style.option, investmentType === InvestmentTypes.SWP ? $style.selected : '']"
+        @click="onInvestmentTypeChange(InvestmentTypes.SWP)"
       >
-        SWP
+        SIP + SWP
       </div>
     </div>
   </div>
@@ -37,10 +37,11 @@
 
 <script setup lang="ts">
 import { ref } from 'vue';
+import { InvestmentTypes } from '../constants';
 
 const emits = defineEmits(['onInvestmentTypeChange']);
-const investmentType = ref('SIP');
-const onInvestmentTypeChange = (type: string) => {
+const investmentType = ref(InvestmentTypes.SIP);
+const onInvestmentTypeChange = (type: InvestmentTypes) => {
   investmentType.value = type;
   emits('onInvestmentTypeChange', type);
 };

@@ -2,35 +2,83 @@
   <div :class="$style.output">
     <div :class="$style.category">
       Invested Amount
-      <span
-        >&#8377;{{ formatCurrencyValue(investmentValue) }} ({{
-          formatPrice(investmentValue)
-        }})</span
+      <span>&#8377;{{ formatCurrencyValue(investment) }} ({{ formatPrice(investment) }})</span>
+    </div>
+    <div :class="$style.category">
+      Return generated in {{ years }} years<span
+        >&#8377;{{ formatCurrencyValue(returns) }} ({{ formatPrice(returns) }})</span
       >
     </div>
     <div :class="$style.category">
-      Est. returns<span
-        >&#8377;{{ formatCurrencyValue(estimatedReturnsValue) }} ({{
-          formatPrice(estimatedReturnsValue)
-        }})</span
+      Total Wealth generated in {{ years }} years<span
+        >&#8377;{{ formatCurrencyValue(totalReturns) }} ({{ formatPrice(totalReturns) }})</span
       >
     </div>
-    <div :class="$style.category">
-      Future Value<span
-        >&#8377;{{ formatCurrencyValue(totalReturensValue) }} ({{
-          formatPrice(totalReturensValue)
-        }})</span
-      >
-    </div>
+    <template v-if="showSWPReturns">
+      <div :class="$style.category">
+        {{ years }}th year SIP with step up<span
+          >&#8377;{{ formatCurrencyValue(stepUpReturns) }} ({{ formatPrice(stepUpReturns) }})</span
+        >
+      </div>
+      <div :class="$style.category">
+        Wealth when starting SWP<span
+          >&#8377;{{ formatCurrencyValue(totalReturns) }} ({{ formatPrice(totalReturns) }})</span
+        >
+      </div>
+      <div :class="$style.category">
+        Total Withdrawl made<span
+          >&#8377;{{ formatCurrencyValue(totalWithdrawls) }} ({{
+            formatPrice(totalWithdrawls)
+          }})</span
+        >
+      </div>
+      <div :class="$style.category">
+        Final Value<span
+          >&#8377;{{ formatCurrencyValue(finalValue) }} ({{ formatPrice(finalValue) }})</span
+        >
+      </div>
+    </template>
   </div>
 </template>
 
 <script setup lang="ts">
 import { formatCurrencyValue } from './sip-calculator';
-import { useMainStore } from '../store';
-import { storeToRefs } from 'pinia';
 
-const { investmentValue, estimatedReturnsValue, totalReturensValue } = storeToRefs(useMainStore());
+defineProps({
+  showSWPReturns: {
+    type: Boolean,
+    required: false,
+    default: false
+  },
+  years: {
+    type: Number,
+    required: true
+  },
+  investment: {
+    type: Number,
+    required: true
+  },
+  returns: {
+    type: Number,
+    required: true
+  },
+  totalReturns: {
+    type: Number,
+    required: true
+  },
+  totalWithdrawls: {
+    type: Number,
+    required: true
+  },
+  finalValue: {
+    type: Number,
+    required: true
+  },
+  stepUpReturns: {
+    type: Number,
+    required: true
+  }
+});
 
 const formatPrice = (price: number) => {
   if (isNaN(price)) {

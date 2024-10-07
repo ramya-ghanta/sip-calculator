@@ -35,6 +35,7 @@ import {
   calculateYearlySIP,
   formatCurrencyValue
 } from './components/sip-calculator';
+import { InvestmentTypes } from './constants';
 
 ChartJS.register(
   CategoryScale,
@@ -171,23 +172,28 @@ const calculateLineData = (
 
   for (let i = 1; i <= years; i += 1) {
     const calculateReturns: any = () => {
-      if (investmentType === 'SIP') {
+      if (investmentType === InvestmentTypes.SIP) {
         return calculateSIP(i, investment, expectedReturn);
-      } else if (investmentType === 'Lmpsum') {
+      } else if (investmentType === InvestmentTypes.LUMPSUM) {
         return calculateLump(i, investment, expectedReturn);
-      } else if (investmentType === 'step') {
+      } else if (
+        investmentType === InvestmentTypes.STEPUP ||
+        investmentType === InvestmentTypes.SWP
+      ) {
         return calculateStepUpSIP(i, investment, stepup, expectedReturn);
-      } else if (investmentType === 'yearly') {
+      } else if (investmentType === InvestmentTypes.YEARLY) {
         return calculateYearlySIP(investment, expectedReturn, i);
       }
     };
 
     const { totalInvestment, totalReturn } = calculateReturns();
-    investmentType === 'SIP'
+    investmentType === InvestmentTypes.SIP
       ? calculateSIP(i, investment, expectedReturn)
-      : investmentType === 'step'
+      : investmentType === InvestmentTypes.STEPUP || investmentType === InvestmentTypes.SWP
         ? calculateStepUpSIP(i, investment, stepup, expectedReturn)
-        : calculateLump(i, investment, expectedReturn);
+        : investmentType === InvestmentTypes.LUMPSUM
+          ? calculateLump(i, investment, expectedReturn)
+          : calculateYearlySIP(investment, expectedReturn, i);
 
     labels.push(i);
     values.push(totalReturn);
