@@ -1,6 +1,6 @@
 <template>
   <div>
-    <div :class="$style['sip-options']">
+    <div :class="[$style['sip-options'], menuOpen ? $style['open'] : '']">
       <div
         :class="[$style.option, investmentType === InvestmentTypes.SIP ? $style.selected : '']"
         @click="onInvestmentTypeChange(InvestmentTypes.SIP)"
@@ -38,16 +38,32 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { InvestmentTypes } from '../constants';
+import { useMainStore } from '@/store';
+import { storeToRefs } from 'pinia';
+
+const { menuOpen } = storeToRefs(useMainStore());
 
 const emits = defineEmits(['onInvestmentTypeChange']);
 const investmentType = ref(InvestmentTypes.SIP);
+
 const onInvestmentTypeChange = (type: InvestmentTypes) => {
   investmentType.value = type;
   emits('onInvestmentTypeChange', type);
+  menuOpen.value = false;
 };
 </script>
 
 <style module>
+.sip-options {
+  display: flex;
+  justify-content: center;
+  flex-direction: row;
+  margin: 1rem;
+  overflow: auto;
+  scrollbar-width: thin;
+  flex-wrap: wrap;
+}
+
 .option {
   background-color: #fff;
   display: inline-flex;
@@ -69,12 +85,21 @@ const onInvestmentTypeChange = (type: InvestmentTypes) => {
   color: white;
 }
 
-.sip-options {
-  display: flex;
-  justify-content: center;
-  margin: 1rem;
-  overflow: auto;
-  scrollbar-width: thin;
-  flex-wrap: wrap;
+@media (max-width: 768px) {
+  .sip-options {
+    display: none;
+    flex-direction: column;
+  }
+
+  .sip-options.open {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .option {
+    flex: 1 1 auto;
+    width: 80%;
+  }
 }
 </style>

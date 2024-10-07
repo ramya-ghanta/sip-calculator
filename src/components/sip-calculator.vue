@@ -1,6 +1,9 @@
 <template>
   <div>
-    <h1 style="text-align: center">SIP Calculator</h1>
+    <div style="display: flex; justify-content: space-between">
+      <h1 style="text-align: center; flex-grow: 1">SIP Calculator</h1>
+      <div :class="$style['hamburger']" @click="toggleMenu">&#9776;</div>
+    </div>
     <SIPOptions @onInvestmentTypeChange="onInvestmentTypeChange" />
     <div>
       <div v-if="investmentType != InvestmentTypes.LUMPSUM" :class="$style.options">
@@ -27,7 +30,11 @@
                   type="number"
                   v-model="investment"
                   :class="$style['text-box']"
-                  @blur="showInvestmentText = true"
+                  @blur="
+                    {
+                      scaleInvestment(), (showInvestmentText = true);
+                    }
+                  "
                   v-else
                 />
               </div>
@@ -35,8 +42,8 @@
           </div>
         </div>
         <Slider
-          v-model="investment"
-          :max="1000000"
+          v-model="sliderValue"
+          :max="380"
           :step="1"
           :tooltips="false"
           :lazy="false"
@@ -235,7 +242,6 @@
       </div>
     </div>
     <SIPOutput
-      :showSWPReturns="investmentType == InvestmentTypes.SWP"
       :years="timePeriod"
       :investment="investmentValue"
       :returns="estimatedReturnsValue"
@@ -243,27 +249,28 @@
       :totalWithdrawls="totalWithdrawals"
       :finalValue="finalValue"
       :stepUpReturns="steupReturns"
+      :investmentType="investmentType"
+      style="margin-top: 1rem"
     />
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue';
-import {
-  calculateSIP,
-  calculateLump,
-  calculateStepUpSIP,
-  calculateYearlySIP,
-  calculateSWP
-} from './sip-calculator';
+import { calculateSWP, calculateReturns } from './sip-calculator';
 import SIPOutput from './sip-output.vue';
 import SIPOptions from './sip-options.vue';
 import Slider from '@vueform/slider';
 import { InvestmentTypes } from '../constants';
+import { useMainStore } from '@/store';
+import { storeToRefs } from 'pinia';
+
+const { menuOpen } = storeToRefs(useMainStore());
 
 const emits = defineEmits(['update']);
 
 const investment = ref(25000);
+const sliderValue = ref(25000);
 const lumpInvestment = ref(100000);
 const investmentValue = ref(0);
 const estimatedReturnsValue = ref(0);
@@ -291,8 +298,38 @@ const showError = computed(() =>
 const investmentInterval = ref(1);
 
 onMounted(() => {
+  scaleInvestment();
   onValueChange();
 });
+
+const toggleMenu = () => {
+  menuOpen.value = !menuOpen.value;
+};
+
+const transformToDisplayValue = (value: number) => {
+  if (value <= 200) {
+    return value * 500;
+  } else {
+    return 100000 + (value - 200) * 5000;
+  }
+};
+
+const transformToSliderValue = (value: number) => {
+  if (value <= 100000) {
+    return value / 500;
+  } else {
+    return 200 + (value - 100000) / 5000;
+  }
+};
+
+watch(sliderValue, (newValue) => {
+  investment.value = transformToDisplayValue(newValue);
+  onValueChange();
+});
+
+const scaleInvestment = () => {
+  sliderValue.value = transformToSliderValue(investment.value);
+};
 
 const investmentTitle = computed(() =>
   investmentType.value === InvestmentTypes.LUMPSUM ? 'Total Investment' : 'Monthly Investment'
@@ -300,6 +337,7 @@ const investmentTitle = computed(() =>
 
 const onInvestmentTypeChange = (type: InvestmentTypes) => {
   investmentType.value = type;
+  scaleInvestment();
   onValueChange();
 };
 
@@ -314,32 +352,8 @@ const formatPrice = (price: number) => {
 };
 
 const onValueChange = () => {
-  const calculateReturns: any = () => {
-    if (investmentType.value === InvestmentTypes.SIP) {
-      return calculateSIP(timePeriod.value, investment.value, expectedReturn.value);
-    } else if (investmentType.value === InvestmentTypes.LUMPSUM) {
-      return calculateLump(timePeriod.value, lumpInvestment.value, expectedReturn.value);
-    } else if (
-      investmentType.value === InvestmentTypes.STEPUP ||
-      investmentType.value === InvestmentTypes.SWP
-    ) {
-      return calculateStepUpSIP(
-        timePeriod.value,
-        investment.value,
-        stepup.value,
-        expectedReturn.value
-      );
-    } else if (investmentType.value === InvestmentTypes.YEARLY) {
-      return calculateYearlySIP(investment.value, expectedReturn.value, timePeriod.value);
-    }
-  };
-
   if (investmentType.value === InvestmentTypes.SWP) {
-    const {
-      totalWithdrawals: swpWithdrawls,
-      finalValue: swpFinal,
-      sipForFinalYear
-    } = calculateSWP(
+    const { totalWithdrawals: swpWithdrawls, finalValue: swpFinal } = calculateSWP(
       investment.value,
       expectedReturn.value,
       timePeriod.value,
@@ -351,14 +365,21 @@ const onValueChange = () => {
 
     totalWithdrawals.value = swpWithdrawls;
     finalValue.value = swpFinal;
-    steupReturns.value = sipForFinalYear;
   }
+
+  steupReturns.value = investment.value * Math.pow(1 + stepup.value / 100, timePeriod.value - 1);
 
   const {
     totalInvestment: totalInvestedAmount,
     estimatedReturns: finalEstimatedReturns,
     totalReturn: finalReturns
-  } = calculateReturns();
+  } = calculateReturns(
+    investmentType.value,
+    investmentType.value === InvestmentTypes.LUMPSUM ? lumpInvestment.value : investment.value,
+    expectedReturn.value,
+    timePeriod.value,
+    stepup.value
+  );
 
   totalInvestment.value = totalInvestedAmount;
   investmentValue.value = totalInvestedAmount;
@@ -376,7 +397,10 @@ const onValueChange = () => {
       investmentType.value === InvestmentTypes.LUMPSUM ? lumpInvestment.value : investment.value,
     investmentType: investmentType.value,
     years: timePeriod.value,
-    stepup: stepup.value
+    stepup: stepup.value,
+    swpReturnRate: swpReturnRate.value,
+    swpWithdrawl: swpWithdrawl.value,
+    swpTenure: swpTenure.value
   });
 };
 
@@ -411,11 +435,25 @@ watch(investmentType, (newValue, oldValue) => {
 <style src="@vueform/slider/themes/default.css"></style>
 
 <style module>
+.hamburger {
+  display: none;
+  font-size: 30px;
+  cursor: pointer;
+  margin-left: 10px;
+  padding-top: 25px;
+}
+
+@media (max-width: 768px) {
+  .hamburger {
+    display: block; /* Show hamburger icon on mobile */
+  }
+}
+
 .options {
   display: flex;
   flex-direction: column;
   padding-bottom: 4%;
-  gap: 1rem;
+  gap: 1.5rem;
 }
 
 .category {
