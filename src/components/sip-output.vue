@@ -16,6 +16,11 @@
         >&#8377;{{ formatCurrencyValue(totalReturns) }} ({{ formatPrice(totalReturns) }})</span
       >
     </div>
+    <div :class="$style.category">
+      Absolute Returns in {{ years }} years<span :class="$style['no-wrap']"
+        >{{ Math.round(((totalReturns - investment) / investment) * 100) }}%</span
+      >
+    </div>
     <div
       v-if="investmentType == InvestmentTypes.STEPUP || investmentType == InvestmentTypes.SWP"
       :class="$style.category"

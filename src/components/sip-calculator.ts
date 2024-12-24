@@ -79,7 +79,7 @@ export const calculateSWP = (
   let totalWithdrawals = 0;
   let finalValue = totalReturn;
 
-  for (let i = 0; i < years; i++) {
+  for (let i = 0; i < swpTenure; i++) {
     const annualWithdrawal = finalValue * (swpWithdrawlRate / 100);
     totalWithdrawals += annualWithdrawal;
     finalValue -= annualWithdrawal;

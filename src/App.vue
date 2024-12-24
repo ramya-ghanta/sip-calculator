@@ -102,8 +102,9 @@ const barChartOptions = {
         },
         afterLabel: function (context: any) {
           return [
-            `Principal: ${formatCurrencyValue(investmentDetails.value.principal[context.dataIndex])}`,
-            `Total Wealth: ${formatCurrencyValue(investmentDetails.value.totalReturns[context.dataIndex])}`
+            `Invested: ${formatCurrencyValue(investmentDetails.value.principal[context.dataIndex])}`,
+            `Profit: ${formatCurrencyValue(investmentDetails.value.expectedReturns[context.dataIndex])}`,
+            `Total Returns: ${formatCurrencyValue(investmentDetails.value.totalReturns[context.dataIndex])}`
           ];
         },
         title: function () {
@@ -219,7 +220,7 @@ const calculateLineData = (
         ? calculateStepUpSIP(i, investment, stepup, expectedReturn)
         : investmentType === InvestmentTypes.LUMPSUM
           ? calculateLump(i, investment, expectedReturn)
-          : calculateYearlySIP(investment, expectedReturn, i);
+            : calculateYearlySIP(investment, expectedReturn, i);
 
     labels.push(i);
     expectedReturnsValues.value.push(estimatedReturns);

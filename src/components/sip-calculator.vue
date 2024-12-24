@@ -79,7 +79,7 @@
         </div>
         <Slider
           v-model="lumpInvestment"
-          :max="5000000"
+          :max="20000000"
           :step="investmentInterval"
           :tooltips="false"
           :lazy="false"
@@ -93,12 +93,6 @@
         <div :class="$style.category">
           <span> Annual step up (%) </span>
           <div style="display: flex; justify-content: flex-end">
-            <span v-if="stepup < 1" :class="$style.tooltip">
-              <i class="fas fa-exclamation-circle"></i>
-              <span :class="$style['tooltip-text']" style="left: -700%"
-                >Value must greater than 1</span
-              >
-            </span>
             <div :class="$style['input-field']">
               <input type="number" v-model="stepup" min="1" :class="$style['text-box']" />
             </div>
@@ -395,7 +389,9 @@ const sipInvestment = ref(25000);
 const LumpsumInvestment = ref(100000);
 const stepInvestment = ref(25000);
 const yearlyInvestment = ref(25000);
-const swpInvestment = ref(25000);
+const swpsipInvestment = ref(25000);
+const steupValue = ref(10);
+const stepupValueSWP = ref(0);
 
 watch(
   () => props.investmentType,
@@ -405,11 +401,13 @@ watch(
     } else if (oldValue === InvestmentTypes.LUMPSUM) {
       LumpsumInvestment.value = investment.value;
     } else if (oldValue === InvestmentTypes.STEPUP) {
+      steupValue.value = stepup.value;
       stepInvestment.value = investment.value;
     } else if (oldValue === InvestmentTypes.YEARLY) {
       yearlyInvestment.value = investment.value;
     } else if (oldValue === InvestmentTypes.SWP) {
-      swpInvestment.value = investment.value;
+      stepupValueSWP.value = stepup.value;
+      swpsipInvestment.value = investment.value;
     }
 
     if (newValue === InvestmentTypes.SIP) {
@@ -417,11 +415,13 @@ watch(
     } else if (newValue === InvestmentTypes.LUMPSUM) {
       investment.value = LumpsumInvestment.value;
     } else if (newValue === InvestmentTypes.STEPUP) {
+      stepup.value = steupValue.value;
       investment.value = stepInvestment.value;
     } else if (newValue === InvestmentTypes.YEARLY) {
       investment.value = yearlyInvestment.value;
     } else if (newValue === InvestmentTypes.SWP) {
-      investment.value = swpInvestment.value;
+      stepup.value = stepupValueSWP.value;
+      investment.value = swpsipInvestment.value;
     }
 
     scaleInvestment();

@@ -1,176 +1,177 @@
+`
 <template>
-  <div>
-    <div class="topnav">
-      <div :class="$style.navbarBrand">Chandu Wealth</div>
-      <div id="myLinks">
-        <a
-          :class="[$style.option, investmentType === InvestmentTypes.SIP ? $style.selected : '']"
-          @click="onInvestmentTypeChange(InvestmentTypes.SIP)"
-        >
-          SIP
-        </a>
-        <a
-          :class="[
-            $style.option,
-            investmentType === InvestmentTypes.LUMPSUM ? $style.selected : ''
-          ]"
-          @click="onInvestmentTypeChange(InvestmentTypes.LUMPSUM)"
-        >
-          Lumpsum
-        </a>
-        <a
-          :class="[$style.option, investmentType === InvestmentTypes.STEPUP ? $style.selected : '']"
-          @click="onInvestmentTypeChange(InvestmentTypes.STEPUP)"
-        >
-          Step Up SIP
-        </a>
-        <a
-          :class="[$style.option, investmentType === InvestmentTypes.YEARLY ? $style.selected : '']"
-          @click="onInvestmentTypeChange(InvestmentTypes.YEARLY)"
-        >
-          Yearly SIP
-        </a>
-        <a
-          :class="[$style.option, investmentType === InvestmentTypes.SWP ? $style.selected : '']"
-          @click="onInvestmentTypeChange(InvestmentTypes.SWP)"
-        >
-          SIP + SWP
-        </a>
+  <nav class="navbar-container">
+    <div class="navbar-content">
+      <div class="brand-container">
+        <div class="brand-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+          </svg>
+        </div>
+        <span class="brand-text">Chandu Wealth</span>
       </div>
-      <a href="javascript:void(0);" class="icon" @click="toggleMenu()">
-        <i class="fa fa-bars"></i>
-      </a>
+
+      <!-- Navigation Links -->
+      <div class="nav-links" :class="{ 'show-menu': menuOpen }">
+        <div
+          v-for="(type, key) in investmentTypes"
+          :key="key"
+          @click="onInvestmentTypeChange(type)"
+          :class="['nav-link', { 'nav-link-active': selectedType === key }]"
+        >
+          {{ type }}
+        </div>
+      </div>
+      <!-- Menu Toggle -->
+      <button class="menu-toggle" @click="toggleMenu">
+        <span class="menu-icon">
+          <span v-if="!menuOpen">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M3 12h18M3 6h18M3 18h18" />
+            </svg>
+          </span>
+          <span v-else>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M18 6L6 18M6 6l12 12" />
+            </svg>
+          </span>
+        </span>
+      </button>
     </div>
-  </div>
+  </nav>
 </template>
 
 <script setup lang="ts">
 import { ref } from 'vue';
 import { InvestmentTypes } from '../constants';
-
-function toggleMenu() {
-  var x = document.getElementById('myLinks') as any;
-  if (x?.style.display === 'block') {
-    x.style.display = 'none';
-  } else {
-    x.style.display = 'block';
-  }
-}
-
+const emit = defineEmits(['onInvestmentTypeChange']);
 const menuOpen = ref(false);
-
-// const toggleMenu = () => {
-//   menuOpen.value = !menuOpen.value;
-// };
-
-const emits = defineEmits(['onInvestmentTypeChange']);
-const investmentType = ref(InvestmentTypes.SIP);
-
+const selectedType = ref(InvestmentTypes.SIP);
+const investmentTypes = InvestmentTypes;
+const toggleMenu = () => {
+  menuOpen.value = !menuOpen.value;
+};
 const onInvestmentTypeChange = (type: InvestmentTypes) => {
-  investmentType.value = type;
-  emits('onInvestmentTypeChange', type);
+  selectedType.value = type as any;
+  emit('onInvestmentTypeChange', type);
+  console.log('***type', type);
   menuOpen.value = false;
 };
 </script>
 
-<style module>
-.sip-options {
-  display: flex;
-  justify-content: center;
-  flex-direction: row;
-  margin: 1rem;
-  overflow: auto;
-  scrollbar-width: thin;
-  flex-wrap: wrap;
+<style scoped>
+.navbar-container {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  box-shadow:
+    0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -1px rgba(0, 0, 0, 0.06);
 }
 
-.option {
-  color: white;
-  padding: 14px 16px;
-  text-decoration: none;
-  font-size: 17px;
-  display: block;
-}
-
-.selected {
-  background-color: #10b981;
-  color: white;
-}
-
-.navbarBrand {
-  font-weight: 800;
-  font-size: 2rem;
-  color: aliceblue;
-  font-family: 'Gill Sans', 'Gill Sans MT', Calibri, 'Trebuchet MS', sans-serif;
-  padding: 0.5rem;
-}
-</style>
-
-<style>
-/* Style the navigation menu */
-.topnav {
-  overflow: hidden;
-  background-color: #10b981;
-  position: relative;
+.navbar-content {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0.75rem 1rem;
   display: flex;
   justify-content: space-between;
+  align-items: center;
 }
 
-/* Hide the links inside the navigation menu (except for logo/home) */
-.topnav #myLinks {
+/* Brand styles */
+.brand-container {
   display: flex;
+  align-items: center;
+  gap: 0.75rem;
 }
 
-/* Style navigation menu links */
-.topnav a {
+.brand-icon {
+  width: 2rem;
+  height: 2rem;
   color: white;
-  padding: 14px 16px;
-  text-decoration: none;
-  font-size: 17px;
+}
+
+.brand-text {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: white;
+  font-family: 'Gill Sans', 'Gill Sans MT', Calibri, 'Trebuchet MS', sans-serif;
+}
+
+/* Navigation links styles */
+.nav-links {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.nav-link {
+  padding: 0.5rem 1rem;
+  color: white;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: all 0.2s;
+  border: 1px solid transparent;
+  cursor: pointer;
+}
+
+.nav-link:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.nav-link-active {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+/* Menu toggle styles */
+.menu-toggle {
+  display: none;
+  color: white;
+  padding: 0.5rem;
+  transition: all 0.2s;
+}
+
+.menu-icon {
+  width: 1.5rem;
+  height: 1.5rem;
   display: block;
 }
 
-.topnav a.icon {
-  display: none;
+.menu-toggle:hover {
+  background-color: rgba(255, 255, 255, 0.1);
 }
 
+/* Mobile styles */
 @media (max-width: 768px) {
-  .topnav {
-    display: block;
-    background-color: #10b981;
-  }
-
-  .topnav a.icon {
-    background: #04aa6d;
-    display: block;
-    position: absolute;
-    right: 0;
-    top: 0;
-    font-size: 2rem;
+  .navbar-content {
     padding: 0.5rem;
   }
-}
 
-@media (min-width: 769px) {
-  .topnav {
+  .menu-toggle {
+    display: block;
+  }
+
+  .nav-links {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    flex-direction: column;
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    padding: 0.5rem;
+    gap: 0.25rem;
+  }
+
+  .nav-links.show-menu {
     display: flex;
-    justify-content: space-between;
   }
 
-  .topnav #myLinks {
-    display: flex !important;
+  .nav-link {
+    width: 100%;
+    text-align: left;
   }
-}
-
-/* Add a grey background color on mouse-over */
-.topnav a:hover {
-  background-color: #04aa6d;
-  color: white;
-}
-
-/* Style the active link (or home/logo) */
-.active {
-  background-color: #04aa6d;
-  color: white;
 }
 </style>
+`
